@@ -1,0 +1,22 @@
+# fixtures/corpus/manifest.yaml — corpus manifest (03 layout; TC-043).
+# doc id, content_type (manual|log|schedule), file, sha256.
+#
+# PROVISIONAL (ADR-004, 08 item 17): the committed corpus is a
+# structurally-valid stand-in for the curated manuals/logs/schedule; the
+# real corpus is swapped in at environment prep and the sha256 column
+# updated then. The M6 suite gates structure + integrity, not content.
+# Content types deliberately cover manual + log + schedule — the types
+# beat 3 retrieves over (sizing reduction row; TC-043).
+documents:
+  - id: manual-01
+    content_type: manual
+    file: manual-01.md
+    sha256: 875c9b86ce298f60a82a9f0a31dd3efc1a4bf6f788b446c6e066468527e1a5fc
+  - id: log-01
+    content_type: log
+    file: log-01.md
+    sha256: c4786c0f2e6cf42d201cc51fa42f6bc74fdff358a06a1e193b6005675eb02733
+  - id: schedule-01
+    content_type: schedule
+    file: schedule-01.md
+    sha256: baab4d6d6ae12e57d774841d1633ef9017c9fdc8f3c5e09b618a73f6080f265c

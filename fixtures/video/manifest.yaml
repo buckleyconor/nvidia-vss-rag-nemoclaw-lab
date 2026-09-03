@@ -1,0 +1,31 @@
+# fixtures/video/manifest.yaml — clip manifest (03 layout; TC-042).
+# clip id, role (normal|anomaly), file, duration_s, equipment, source.
+#
+# PROVISIONAL (ADR-004, 08 item 17): the committed clips are synthesized
+# structurally-valid MP4 probes (ftyp box at offset 4 — the TC-042 check),
+# NOT real factory video. The curated normal + anomaly clips are swapped in
+# at environment prep, after the scrub gate (08 item 18: no identifiable
+# personnel), and this manifest is updated then (durations, ids, source).
+#
+# The flat entry format (id/role/file) is also what scripts/demo/0{1,2}-*.sh
+# parse on the VM (stdlib-only regex — no PyYAML there), so keep values
+# single-token on those keys.
+clips:
+  - id: clip-normal-01
+    role: normal
+    file: clip-normal-01.mp4
+    duration_s: 45
+    equipment: M-3021
+    source: provisional-probe
+  - id: clip-normal-02
+    role: normal
+    file: clip-normal-02.mp4
+    duration_s: 45
+    equipment: M-3021
+    source: provisional-probe
+  - id: clip-anomaly-01
+    role: anomaly
+    file: clip-anomaly-01.mp4
+    duration_s: 45
+    equipment: M-3021
+    source: provisional-probe

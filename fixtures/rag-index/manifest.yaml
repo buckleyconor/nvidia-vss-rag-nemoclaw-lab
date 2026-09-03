@@ -1,0 +1,16 @@
+# fixtures/rag-index/manifest.yaml — pre-built RAG index artifact SLOT
+# (03 layout; TC-044).
+#
+# PROVISIONAL (ADR-004, 08): NO artifact file is committed. The canonical
+# path is ingest-at-prep (scripts/prep/25-ingest-corpus.sh into collection
+# demo_corpus); the artifact format + restore command are prep-defined and
+# recorded in prep-log.md if the optional fast path (pre-built artifact) is
+# built at all. A committed artifact must be non-empty (TC-044).
+#
+# built_from: sha256 of the newline-joined per-document sha256 values from
+# fixtures/corpus/manifest.yaml, in manifest order (the declared aggregate
+# rule — tests/test_fixtures.py recomputes it).
+collection_name: demo_corpus
+built_from: ef9eb2c30f02f518f851980c554955f518b527def66920608714039d8cde32eb
+artifact: null
+restore: <prep-defined; recorded in prep-log.md — 08>
