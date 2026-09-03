@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Notifications — mock-wo{% endblock %}
+{% block content %}
+<h1>Notifications</h1>
+{% if notifications %}
+<ul>
+  {% for n in notifications %}
+  <li>
+    <a href="/work-orders/{{ n['work_order_id'] }}">{{ n['message'] }}</a>
+    <span class="meta"> · {{ n['channel'] }} · {{ 'read' if n['read_at'] else 'unread' }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty" id="empty-notifications">No notifications yet.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ wo['id'][:8] }} — mock-wo{% endblock %}
+{% block content %}
+<h1>{{ wo['title'] }}</h1>
+<p class="meta">
+  ID <a href="/work-orders/{{ wo['id'] }}">{{ wo['id'][:8] }}</a>
+  · {{ wo['equipment'] }}
+  · priority {{ wo['priority'] }}
+  · status {{ wo['status'] }}
+  · created {{ wo['created_at'] }}
+  {% if wo['updated_at'] != wo['created_at'] %}· updated {{ wo['updated_at'] }}{% endif %}
+  {% if wo['assigned_to'] %}· assigned to {{ wo['assigned_to'] }}{% endif %}
+</p>
+<p>{{ wo['description'] }}</p>
+<p class="meta">Anomaly ref: {{ wo['anomaly_ref'] }}</p>
+<h2>Evidence</h2>
+{% if citations_by_source %}
+{% for source, items in citations_by_source.items() %}
+<div class="citation-block">
+  <h3 class="citation-group" data-source="{{ source }}">{{ source }} ({{ items|length }})</h3>
+  {% for c in items %}
+  <p class="meta">{{ c['source_id'] }}</p>
+  <blockquote>{{ c['quote'] }}</blockquote>
+  {% endfor %}
+</div>
+{% endfor %}
+{% else %}
+<p class="empty">No citations.</p>
+{% endif %}
+{% endblock %}

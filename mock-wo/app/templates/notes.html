@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Notes — mock-wo{% endblock %}
+{% block content %}
+<h1>Monitoring notes <span class="meta">({{ notes|length }})</span></h1>
+{% if notes %}
+<table>
+  <tr>
+    <th>Equipment</th><th>Note</th><th>Anomaly ref</th><th>Created</th>
+  </tr>
+  {% for n in notes %}
+  <tr>
+    <td>{{ n['equipment'] }}</td>
+    <td>{{ n['description'] }}</td>
+    <td class="meta">{{ n['anomaly_ref'] }}</td>
+    <td class="meta">{{ n['created_at'] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty" id="empty-notes">No monitoring notes yet.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+# config/config_rag.yml — VSS agent config enabling the built-in `frag`
+# tool (02: VSS_AGENT_CONFIG_FILE -> config_rag.yml).
+#
+# PROVISIONAL COPY. The authoritative content is the Jul 2026 blog; the
+# repo carries this copy and prep verifies it against the cloned
+# release's defaults, recording any diff in prep-log.md (08 open item).
+# The schema here is NOT pinned until that verification lands.
+agent:
+  tools:
+    - frag

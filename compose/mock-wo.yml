@@ -1,0 +1,28 @@
+# compose/mock-wo.yml — standalone file (also the dev-machine smoke target).
+# VERBATIM contract from 03-build-decisions.md. `demo-net` is the auth-shim
+# network (build doc contract) — created by the shim compose in the full
+# lab; this file references it, it does not define it.
+services:
+  mock-wo:
+    image: mock-wo:lab
+    build: ./mock-wo
+    container_name: mock-wo
+    ports: ["8090:8090"]
+    environment:
+      MOCK_WO_DB_PATH: /data/mock-wo/work-orders.db
+    volumes:
+      - mock-wo-data:/data/mock-wo
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks: [demo-net]   # same network as the auth-shim (build doc contract)
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g       # within the sizing's ~1–2 GB estimate; CPU-only, no GPU
+
+volumes:
+  mock-wo-data:            # per-instance learner state; wiped on VM reset

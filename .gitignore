@@ -1,0 +1,25 @@
+# Repo hygiene (04): real env files, the prep artifact and state dirs are
+# never committed. The *.env.example templates ARE tracked (they carry
+# <PLACEHOLDER> values only).
+
+# real env files — templates exempted below
+*.env
+!*.env.example
+
+# prep-time artifact: recorded reality (clone SHAs, digests, measurements)
+prep-log.md
+
+# state dirs (per-instance / build state)
+state/
+
+# local dev artifacts (the dev gate recreates .venv from pinned pins)
+.venv/
+.coverage
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+coverage.xml
+*.db
+*.db-wal
+*.db-shm

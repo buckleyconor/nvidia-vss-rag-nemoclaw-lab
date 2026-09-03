@@ -1,0 +1,25 @@
+# compose/nginx.conf.template — auth-shim (build doc Phase 1 mechanism;
+# 03/04). envsubst (docker-compose.shim.yml) substitutes at container
+# start: ${SHARED_API_KEY} (secret — the shared-endpoint key) and
+# ${SHARED_ENDPOINT_URL} (non-secret — the shared off-VM inference
+# endpoint, full URL incl. scheme; 08 item 36).
+#
+# Key translation (04): the caller's Authorization header is stripped and
+# the shared-endpoint x-api-key substituted. nginx default access log is
+# kept — request line only, no header logging (04 never-logged rule).
+# proxy_buffering off — SSE tokens must arrive incrementally, not one
+# blob (05 L5 check 1).
+
+server {
+    listen 8080;
+
+    location / {
+        proxy_pass ${SHARED_ENDPOINT_URL};
+        proxy_set_header    Authorization "";
+        proxy_set_header    x-api-key ${SHARED_API_KEY};
+        proxy_buffering off;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_read_timeout 300s;
+    }
+}

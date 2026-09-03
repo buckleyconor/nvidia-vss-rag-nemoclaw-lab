@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Work orders — mock-wo{% endblock %}
+{% block content %}
+<h1>Work orders <span class="meta">({{ work_orders|length }})</span></h1>
+{% if work_orders %}
+<table>
+  <tr>
+    <th>ID</th><th>Title</th><th>Equipment</th>
+    <th>Priority</th><th>Status</th><th>Created</th>
+  </tr>
+  {% for wo in work_orders %}
+  <tr>
+    <td><a href="/work-orders/{{ wo['id'] }}">{{ wo['id'][:8] }}</a></td>
+    <td>{{ wo['title'] }}</td>
+    <td>{{ wo['equipment'] }}</td>
+    <td>{{ wo['priority'] }}</td>
+    <td>{{ wo['status'] }}</td>
+    <td class="meta">{{ wo['created_at'] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty" id="empty-list">No work orders yet.</p>
+{% endif %}
+<p class="meta">Monitoring notes: <a href="/notes">{{ notes_count }}</a></p>
+{% endblock %}

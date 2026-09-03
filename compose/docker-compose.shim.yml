@@ -1,0 +1,25 @@
+# compose/docker-compose.shim.yml — auth-shim (build doc Phase 1 contract,
+# 03). Pinned properties are test-asserted by TC-032/TC-033 (05):
+# image nginx:1.27-alpine, port 8080:8080, network demo-net.
+#
+# Both substituted values come from the host environment at start
+# (instructor's lab.env — M5 20-start.sh wires --env-file):
+#   SHARED_API_KEY      — secret (04: never in the repo)
+#   SHARED_ENDPOINT_URL — non-secret upstream address (08 item 36)
+services:
+  auth-shim:
+    image: nginx:1.27-alpine
+    container_name: auth-shim
+    ports: ["8080:8080"]
+    environment:
+      - SHARED_API_KEY=${SHARED_API_KEY}
+      - SHARED_ENDPOINT_URL=${SHARED_ENDPOINT_URL}
+    command: >
+      sh -c "envsubst '${SHARED_API_KEY} ${SHARED_ENDPOINT_URL}'
+             < /etc/nginx/conf.d/default.conf.template
+             > /etc/nginx/conf.d/default.conf
+             && exec nginx -g 'daemon off;'"
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/conf.d/default.conf.template:ro
+    networks: [demo-net]
+    restart: unless-stopped
