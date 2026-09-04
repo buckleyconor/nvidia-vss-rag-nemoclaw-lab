@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "guideDir": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+  "findings": [],
+  "summary": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "shellcheck": [],
+  "at": "2026-09-04T00:15:48.678Z"
+}

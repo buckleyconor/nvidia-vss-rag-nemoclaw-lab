@@ -1,0 +1,1993 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "scope": "concept",
+      "rubric": "checklist/concept-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "identity",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "problem-stated-without-product",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "personas",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "beats",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "aha-moment-located",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "success-and-non-goals",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "open-questions-present",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-01T19:36:50Z"
+    },
+    {
+      "scope": "concept",
+      "rubric": "analytic/business-value",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "problem-is-real",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "value-is-concrete",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "claims-are-defensible",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "claims-are-demonstrable",
+          "score": 4,
+          "finding": "concept.md, 'Why this solution' section: the claim 'the project's measured runs show RAG retrieval and LLM fusion add only a couple of seconds to a ~250 s end-to-end run \u2014 the video analysis is the dominant cost, not the agent' is neither demonstrated in any beat (beats 1-5 show the alert, RAG hits, reasoning, work order, and notification, but no on-screen stage-timing breakdown the learner could see) nor explicitly marked as context, unlike the partner-deployment 30-45 min -> ~19 s claim in the same section which is explicitly labeled 'Context, not something this lab measures'. Mark this timing claim as context (measured outside the learner session) or add a beat/output where the learner sees the stage timings."
+        },
+        {
+          "criterion": "audience-fit",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-01T19:36:50Z"
+    },
+    {
+      "scope": "concept",
+      "rubric": "holistic/story-coherence",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "arc-holds",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "concept-to-sizing-fit",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "scope-is-fenced",
+          "score": 4,
+          "finding": "Success criterion 4 ('State why the reasoning LLM is shared/off-VM...', Success criteria section item 4) is unsupported by any beat \u2014 no beat surfaces the local-GPU/shared-endpoint split (e.g., a config or architecture observation step); only the 'Why this solution' prose covers it. Additionally, beat 5 'Triage (optional extension)' (The demo story section item 5) claims agent triage behaviour (work order vs monitoring note) that no success criterion asserts."
+        },
+        {
+          "criterion": "it-would-land",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-01T19:36:50Z"
+    },
+    {
+      "scope": "sizing",
+      "rubric": "analytic/footprint-realism",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.7,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "production-baseline-honest",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "reductions-justified",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "aha-moment-protected",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "density-computed",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "stack-pinned",
+          "score": 3,
+          "finding": "sizing.md 'Software stack' table: all six NIM rows are pinned only as 'per the release's compose file (tag not recorded in the build document)', Elasticsearch is 'version not recorded in the build document (VSS/RAG compose default)', NemoClaw carries no version at all (only the vss-repo installer script plus 'fresh OpenClaw install required' \u2014 effectively current/latest), the VSS default VLM identity is left open (Cosmos-Reason2-8B vs nvidia/cosmos3-nano-reasoner, 'version default'), and the mock work-order service is TBD \u2014 i.e. five-plus components are left unversioned rather than carrying exact image references, with the deferrals only flagged in 'Open questions & assumptions'."
+        },
+        {
+          "criterion": "estimates-labelled",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-01T19:36:50Z"
+    },
+    {
+      "scope": "spec",
+      "rubric": "checklist/spec-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 3,
+      "findings": [
+        {
+          "criterion": "all-sections-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "architecture-complete",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "dependencies-pinned",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "build-sequence-testable",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "test-cases-tabulated",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "environment-section-concrete",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "lab-prep-derived",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "verify-entries-executable",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "open-questions-substantive",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T14:51:04Z"
+    },
+    {
+      "scope": "spec",
+      "rubric": "analytic/spec-buildability",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.5,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "interfaces-unambiguous",
+          "score": 4,
+          "finding": "02-architecture.md, Notification data model + mock-wo REST table: read_at is 'set when the learner opens the feed', but no route or behavior defines how the feed is marked read \u2014 GET /api/v1/notifications (optional ?unread=true) is the only route, and there is no statement that it or the /notifications UI page flips read_at, nor a TC covering it; two builders would implement the read-state mechanism differently (mark-on-GET vs an unlisted PATCH endpoint)."
+        },
+        {
+          "criterion": "milestones-independently-testable",
+          "score": 4,
+          "finding": "07-build-sequence.md M1 (mock-wo-api): exit is 'TC-001..TC-020 pass' but the milestone test command runs only mock-wo/tests/test_api.py and mock-wo/tests/test_schemas.py; test_schemas.py is not in the 03-build-decisions.md repo layout (which lists conftest.py, test_api.py, test_ui.py, test_persistence.py), and TC-019 (persistence) presumably lives in test_persistence.py \u2014 the exit criterion's full TC set is not covered by the milestone's own command (only the closing gate's run-dev-tests.sh is)."
+        },
+        {
+          "criterion": "decisions-made-not-deferred",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "footprint-consistent",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "traceable-to-concept",
+          "score": 4,
+          "finding": "02-architecture.md, major components table row 1 (auth-shim 'Beats served: All LLM traffic (beats 2\u20134)') contradicts the beat-by-beat flow table's beat 1 row, whose path is 'VST ingest \u2192 RT-VLM captioning \u2192 LVS (LLM via shim)' \u2014 the shim is on beat 1's path, so the component's beat mapping omits a beat it serves."
+        },
+        {
+          "criterion": "assumptions-surfaced",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T14:51:04Z"
+    },
+    {
+      "scope": "spec",
+      "rubric": "holistic/spec-coherence",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "internally-consistent",
+          "score": 4,
+          "finding": "07-build-sequence.md frontmatter M1 `test` command runs `pytest mock-wo/tests/test_api.py mock-wo/tests/test_schemas.py`, but 03-build-decisions.md's repo layout lists only `conftest.py, test_api.py, test_ui.py, test_persistence.py` under mock-wo/tests/ \u2014 `test_schemas.py` is defined nowhere and `test_persistence.py` is covered by no milestone test command, yet M1's exit criterion claims TC-001..TC-020 (incl. TC-019 persistence, TC-020 concurrency). Secondary seams: 02-architecture.md's config contract names the repo-carried overlay `config/lvs.env` while 03/05 (TC-034) carry `config/lvs.env.example`; 09's ingestor probe is `GET /v1/documents surface` vs 02's `POST /v1/documents`."
+        },
+        {
+          "criterion": "scope-matches-concept",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "depth-is-proportionate",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "a-builder-could-start",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T14:51:04Z"
+    },
+    {
+      "scope": "build-mock-wo-api",
+      "rubric": "checklist/milestone-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 0,
+      "findings": [
+        {
+          "criterion": "deliverable-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "exit-criterion-met",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "tests-written",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "versions-pinned",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-placeholder-work",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-secrets",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "scope-respected",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "decisions-reported",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T20:18:44Z"
+    },
+    {
+      "scope": "build-mock-wo-api",
+      "rubric": "analytic/spec-fidelity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.9,
+      "rounds": 0,
+      "findings": [
+        {
+          "criterion": "interfaces-match",
+          "score": 4,
+          "finding": "Builder decision #5 states 'empty patch (no keys, or only nulls) -> 422', but mock-wo/app/main.py patch_work_order only raised 422 when not patch.model_fields_set (no keys). A PATCH {\"status\": null} passed the guard and returned 200 unchanged. Resolved post-score: route now rejects any patch with no effective field (null-only status -> 422; null assigned_to still clears, per decision 6), regression test added, gate re-run 36 passed."
+        },
+        {
+          "criterion": "architecture-respected",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "tests-prove-the-claim",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "fits-the-existing-code",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "footprint-honoured",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "silence-handled-well",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "failure-modes-considered",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T20:18:44Z"
+    },
+    {
+      "scope": "build-mock-wo-ui",
+      "rubric": "checklist/milestone-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "deliverable-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "exit-criterion-met",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "tests-written",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "versions-pinned",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-placeholder-work",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-secrets",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "scope-respected",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "decisions-reported",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T21:52:17Z"
+    },
+    {
+      "scope": "build-mock-wo-ui",
+      "rubric": "analytic/spec-fidelity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.9,
+      "rounds": 0,
+      "findings": [
+        {
+          "criterion": "interfaces-match",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "architecture-respected",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "tests-prove-the-claim",
+          "score": 4,
+          "finding": "Exit clause 'a new work order appears at the top after POST' (07 M2 exit) was not positionally verified: test_tc021 (mock-wo/tests/test_ui.py) created exactly one work order, so 'at the top' was trivially true; list position with >=2 rows was not pinned by the UI suite (ordering was only pinned at API level by M1 TC-004). Resolved post-score: test_extra_list_order_newest_first_with_multiple_rows added \u2014 creates two work orders and asserts the UI list order matches the API's newest-first order; gate re-run 9 passed."
+        },
+        {
+          "criterion": "fits-the-existing-code",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "footprint-honoured",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "silence-handled-well",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "failure-modes-considered",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T21:52:17Z"
+    },
+    {
+      "scope": "build-mock-wo-container",
+      "rubric": "checklist/milestone-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 0,
+      "findings": [
+        {
+          "criterion": "deliverable-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "exit-criterion-met",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "tests-written",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "versions-pinned",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-placeholder-work",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-secrets",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "scope-respected",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "decisions-reported",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T22:35:19Z"
+    },
+    {
+      "scope": "build-mock-wo-container",
+      "rubric": "analytic/spec-fidelity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 0,
+      "findings": [
+        {
+          "criterion": "interfaces-match",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "architecture-respected",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "tests-prove-the-claim",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "fits-the-existing-code",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "footprint-honoured",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "silence-handled-well",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "failure-modes-considered",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T22:35:19Z"
+    },
+    {
+      "scope": "build-contract-files",
+      "rubric": "checklist/milestone-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 0,
+      "findings": [
+        {
+          "criterion": "deliverable-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "exit-criterion-met",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "tests-written",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "versions-pinned",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-placeholder-work",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "no-secrets",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "scope-respected",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "decisions-reported",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-02T23:49:19Z"
+    },
+    {
+      "scope": "build-contract-files",
+      "rubric": "analytic/spec-fidelity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.7,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "versions-match",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "interfaces-match",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "constraints-respected",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "scope-faithful",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "deviations-recorded",
+          "score": 4,
+          "finding": "08 item 10 claimed the M4 test pins config_rag.yml content incl. RAG_ value reads; the suite had no config_rag.yml assertion and the RAG_ reads are runtime (prep/L5), not build-time. Fixed: test_config_rag_yaml_frag_enabled added (exists + valid YAML + frag enabled, schema unpinned), item 10 reworded to the build-time claim, recorded as 08 item 38."
+        },
+        {
+          "criterion": "no-invented-behavior",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "tests-prove-the-claim",
+          "score": 4,
+          "finding": "No assertion on config_rag.yml existed (deleting it would leave the suite green). Fixed: test_config_rag_yaml_frag_enabled (08 item 38); all other rows are true contract assertions (byte-precise TC-033 strings, /v1 suffix, exact NIM args, exact-pin regex, repo-wide nvapi- scan, TC-041 patterns)."
+        }
+      ],
+      "updated_at": "2026-09-02T23:49:19Z"
+    },
+    {
+      "scope": "plan",
+      "rubric": "checklist/plan-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "id-and-identity",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "objectives",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "modules-complete",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "environment-block",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "lab-prep",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "duration-consistent",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T17:58:22.073Z"
+    },
+    {
+      "scope": "plan",
+      "rubric": "analytic/learning-arc",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "The sequence follows observation \u2192 guided \u2192 independent: early modules walk through with explicit direction, later modules give more independence (fewer hand-holding steps, open-ended checks).",
+          "score": 4,
+          "finding": "Module 6 is the 'independent application' phase but still runs the same scripted one-instruction flow with the same four HITL prompts as Module 4 (plan.md Module 6 roadmap entry: 'runs the same one-instruction flow'), and its second-anomaly fixture is prep-curated (plan.md Open questions, ADR-004); Module 6's success criteria are closed ('a monitoring note appears in the mock CMMS notes list; the work-order list is unchanged'), so independence rests on the agent's verdict rather than open-ended learner checks."
+        },
+        {
+          "criterion": "Each module's goal centers on ONE core concept; modules that bundle two unrelated concepts score low.",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "No module assumes vocabulary or state introduced only in a non-adjacent module; early-module vocabulary is reused later (not re-explained).",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "Difficulty rises gradually; no module jumps far beyond what the prior modules established (at module 2, judge against module 1; flag sudden spikes with the module in the finding).",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "plan",
+      "rubric": "analytic/environment-alignment",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.2,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "baseline-consistent",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "credentials-and-urls-complete",
+          "score": 4,
+          "finding": "plan.md frontmatter environment.urls omits port :30081, which the Module 1 roadmap and success criteria reference ('the local LLM NIM on :30081 absent', 'nothing listens on :30081') \u2014 the port appears only in lab-prep.md's endpoints table ('must be absent'). Also the 'LVS UI' surface that Module 2 ('LVS UI shows a healthy pipeline') and Module 3 ('the alert is raised and visible in the LVS UI') steps and success criteria depend on has no entry in plan.md environment.urls nor in lab-prep.md's endpoints table; only plan.md's 'Open questions / assumptions' section notes the LVS UI URL/port is prep-recorded in prep-log.md, while the analogous OpenClaw UI carries an entry in both files (plan.md urls 'http://localhost:18789' and lab-prep.md endpoints 'OpenClaw UI URL recorded at prep')."
+        },
+        {
+          "criterion": "no-duplicated-setup",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "lab-prep-captures-assumptions",
+          "score": 3,
+          "finding": "lab-prep.md does not capture several assumptions modules treat as already true: (1) mock CMMS work-order list (and notes) empty at session start \u2014 Module 1 and Module 5 success criteria depend on it and plan.md preloaded asserts 'work-order list empty at session start', but lab-prep.md's mock-wo software entry and verify check 10 only assert service health; (2) the NemoClaw skill vss-generate-video-report-rag that Module 4 activates \u2014 lab-prep.md's NemoClaw entry states only the v0.0.118 version and verify check 14 checks the model, not the skill; (3) the beat-5 second anomaly clip for Module 6 \u2014 lab-prep.md 'Expected starting artifacts' lists only 'normal-state for beat 1, anomaly segment for beat 2' plus the generic 'curated content swapped at prep' line; the actual documentation (ADR-004) sits in plan.md's open questions, not lab-prep.md; (4) the LVS UI URL/port used by Modules 2-3 is absent from lab-prep.md's endpoints table (the OpenClaw UI has an entry)."
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "plan",
+      "rubric": "holistic/plan-coherence",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "One overall judgment: does this plan read as a single coherent learning story? Score `overall` 1\u20135.",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-plan-05",
+      "rubric": "checklist/module-plan-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "\u22652 numbered steps; each names an action AND an expected result.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "\u22651 entry; each entry names a concrete, observable screen state (\"Terminal showing collection list with 'Manufacturing'\"), not a vague \"UI screenshot\".",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "\u22651 verifiable end state the reader can check without the author present (a named object exists / a command prints a specific output / a UI shows a specific value).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "Non-empty: states what the module assumes is already true AND what it leaves behind for later modules.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "Every shell command the module will use appears in the plan's \"Commands used\" section in backtick form (so the linter can check them early).",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-plan-05",
+      "rubric": "analytic/module-design",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "pacing",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "verifiable-success",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "depends-on-correct",
+          "score": 4,
+          "finding": "05-verify-the-work-order/plan.md L5 (depends_on: [4]) and L13 (criterion 2: 'the anomaly_ref matches the alert recorded in Module 3') \u2014 this module also consumes Module 3's output (the recorded alert ref / the raised alert in LVS state, per Module 4's delta and plan.md roadmap), which is not listed. No phantom deps and Module 3 is transitively ordered via 4\u21923, so no ordering break; but 'exactly' would be [3, 4], or reword criterion 2 to check the LVS alert state directly instead of the learner-recorded ref."
+        },
+        {
+          "criterion": "image-specificity",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-05-verify-the-work-order",
+      "rubric": "checklist/module-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "steps-implemented",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "expected-outputs",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "images-match-checklist",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "checkpoint-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "title-alignment",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-05-verify-the-work-order",
+      "rubric": "analytic/step-clarity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.4,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "actionable-steps",
+          "score": 4,
+          "finding": "Step 5 bundles two terminal actions in one numbered step (guide.md L287-L295): the by-id work-order GET and a second `curl -s http://localhost:8090/api/v1/notifications` check; steps 1-4 each carry exactly one action with the surface named. Split the notification API check into its own step (or fold it into step 3)."
+        },
+        {
+          "criterion": "ui-actions",
+          "score": 4,
+          "finding": "Step 2 (guide.md L267) is the module's only control interaction and its target is not named in bold with quotes nor positioned: \"Click the work order to open the detail page.\" should be e.g. \"Click the **work order** row at the top of the list to open the detail page.\" Steps 1 and 3 are URL opens with explicit addresses, which is acceptable."
+        },
+        {
+          "criterion": "expected-results",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fluff",
+          "score": 4,
+          "finding": "Minor motivational filler: step 1 (guide.md L263) ends \"This is the aha: the agent did not just produce a report, it closed the loop into the system the maintenance team works from.\" and step 3 (L271) adds \"the dispatcher who never watches the agent still gets pinged\". All other sentences in the module are operational or evidence-explaining; no marketing lines or unexplained jargon."
+        },
+        {
+          "criterion": "terminology-consistent",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-05-verify-the-work-order",
+      "rubric": "analytic/technical-accuracy",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "commands-valid",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "credential-alignment",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fabrication",
+          "score": 4,
+          "finding": "guide.md Module 5 step 4 (and the notification sample in step 5): the specific sample ids `3eca5d81-6172-4a9b-9a63-bd298563fdd9` / `68d30681-b449-489d-8706-b47fec19ada5` and timestamp `2026-09-03T17:18:06.708307Z` appear nowhere in the loaded context \u2014 spec/02-architecture.md's 201 example uses `\"id\": \"6f1c\u2026\"`, scripts/ and .holagent/build/mock-wo-api.json contain no such values \u2014 so plan.md's \"VERBATIM from the mock-wo build (M1/M2)\" attribution is not verifiable; the guide hedges (\"your run's id and timestamps differ\") and everything else in the sample (field names/order, WO-\u2026 filed message format, citations, in_app channel, newest-first ordering) is supported by spec 02 + mock-wo/app code."
+        },
+        {
+          "criterion": "expected-output-plausible",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-05-verify-the-work-order",
+      "rubric": "holistic/module-quality",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "One overall judgment: would a reader complete this module top-to-bottom, first try, without going back? Score `overall` 1\u20135.",
+          "score": 4,
+          "finding": "Step 2 (guide.md L267) presents the detail page as 'citations grouped by source: rag, vss, agent' (three groups), but the canonical example the same module shows in step 4 and the spec's canonical work order (spec/02-architecture.md L145-146) carry only rag + vss citations \u2014 a first-time reader who sees two groups on the detail page gets a brief 'where is the agent group?' moment, bridged alone by step 4's 'signals to check, not the exact prose' and the source-agnostic checkpoint (guide.md L301). Everything else flows: starting state (empty list from Modules 1-2, alert ref recorded in Module 3, single instruction in Module 4) is fully established; all endpoints/commands/outputs verified accurate against spec/02-architecture.md, mock-wo (schemas.py, tests), and scripts/demo/03-agent-kickoff.sh; checkpoint lands at the natural step-5 rest point and states the plan's success criteria verbatim."
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-plan-06",
+      "rubric": "checklist/module-plan-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "\u22652 numbered steps; each names an action AND an expected result.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "\u22651 entry; each entry names a concrete, observable screen state (\"Terminal showing collection list with 'Manufacturing'\"), not a vague \"UI screenshot\".",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "\u22651 verifiable end state the reader can check without the author present (a named object exists / a command prints a specific output / a UI shows a specific value).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "Non-empty: states what the module assumes is already true AND what it leaves behind for later modules.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "Every shell command the module will use appears in the plan's \"Commands used\" section in backtick form (so the linter can check them early).",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-plan-06",
+      "rubric": "analytic/module-design",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 1,
+      "findings": [
+        {
+          "criterion": "pacing",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "verifiable-success",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "depends-on-correct",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "image-specificity",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T21:14:28.796Z"
+    },
+    {
+      "scope": "module-plan-01",
+      "rubric": "checklist/module-plan-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "step-outline",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "image-checklist",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "success-criteria",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "environment-delta",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "commands-listed",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-plan-01",
+      "rubric": "analytic/module-design",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.5,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "pacing",
+          "score": 4,
+          "finding": "01-explore-the-stack/plan.md step outline has 11 numbered steps against est_minutes: 15; the rubric band for 10-20 min is 5-8 steps, so the count overshoots the band by 3 steps. The extra steps are fast curl/nvidia-smi probes so 15 min is workable, but the step count does not match the band for the stated minutes."
+        },
+        {
+          "criterion": "verifiable-success",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "depends-on-correct",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "image-specificity",
+          "score": 4,
+          "finding": "01-explore-the-stack/plan.md frontmatter image_checklist item 2 ('OpenClaw UI with the NemoClaw session ready (the beats 3-4 surface)') names only a generic state ('session ready') without the URL (item 1 carries http://localhost:8090) or the distinguishing on-screen value (the nvidia/nemotron-3-nano-omni-30b-a3b-reasoning model shown in step 11), making the shot harder to find/verify later."
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-plan-02",
+      "rubric": "checklist/module-plan-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "\u22652 numbered steps; each names an action AND an expected result.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "\u22651 entry; each entry names a concrete, observable screen state (\"Terminal showing collection list with 'Manufacturing'\"), not a vague \"UI screenshot\".",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "\u22651 verifiable end state the reader can check without the author present (a named object exists / a command prints a specific output / a UI shows a specific value).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "Non-empty: states what the module assumes is already true AND what it leaves behind for later modules.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "Every shell command the module will use appears in the plan's \"Commands used\" section in backtick form (so the linter can check them early).",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-plan-02",
+      "rubric": "analytic/module-design",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "pacing",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "verifiable-success",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "depends-on-correct",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "image-specificity",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-plan-03",
+      "rubric": "checklist/module-plan-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "step-outline\n\n\u22652 numbered steps; each names an action AND an expected result.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "image-checklist\n\n\u22651 entry; each entry names a concrete, observable screen state\n(\"Terminal showing collection list with 'Manufacturing'\"), not a vague\n\"UI screenshot\".",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "success-criteria\n\n\u22651 verifiable end state the reader can check without the author\npresent (a named object exists / a command prints a specific output / a\nUI shows a specific value).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "environment-delta\n\nNon-empty: states what the module assumes is already true AND what it\nleaves behind for later modules.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "commands-listed\n\nEvery shell command the module will use appears in the plan's \"Commands\nused\" section in backtick form (so the linter can check them early).",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-plan-03",
+      "rubric": "analytic/module-design",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "pacing",
+          "score": 4,
+          "finding": "est_minutes: 15 (03-detect-the-anomaly/plan.md L6) falls in the 10-20 min band that expects 5-8 steps, but the step outline has only 4 steps (03-detect-the-anomaly/plan.md, step outline L1-4); step 3 is an explicit multi-minute VLM wait, so the shortfall is small but the count is below the band's lower bound."
+        },
+        {
+          "criterion": "verifiable-success",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "depends-on-correct",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "image-specificity",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-plan-04",
+      "rubric": "checklist/module-plan-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "step-outline",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "image-checklist",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "success-criteria",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "environment-delta",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "commands-listed",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-plan-04",
+      "rubric": "analytic/module-design",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "pacing",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "verifiable-success",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "depends-on-correct",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "image-specificity",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-01-explore-the-stack",
+      "rubric": "analytic/step-clarity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.2,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "Each numbered step is a single unambiguous action: what the reader does, on which surface (terminal / console page / file). Steps that bundle multiple actions or hide the \"where\" score low.",
+          "score": 4,
+          "finding": "Step 11 bundles two actions on two surfaces \u2014 open the OpenClaw UI in the browser AND run `openclaw nemoclaw status --json | jq -r '.model // \"unavailable\"'` in the shell (guide.md, Module 1 step 11); step 8 bundles two `nvidia-smi` commands into one step (guide.md, Module 1 step 8)."
+        },
+        {
+          "criterion": "UI interactions name the control in bold with quotes (Click the **\"New Collection\"** button); vague \"open the collection page\" phrasing scores low. (When the module has no UI steps, this criterion is n/a: omit it from the findings and exclude it from the entry score.)",
+          "score": 4,
+          "finding": "Step 11's UI action is vague: \"Open the OpenClaw UI at `http://localhost:18789`\" names no panel or element to confirm in the UI \u2014 the model check is delegated to the shell command and \"NemoClaw session ready\" appears only in the screenshot caption, not the step text (guide.md, Module 1 step 11). Step 10's observable elements (\"work-order list\", \"notification badge\") are named in plain prose, not the bold-with-quotes control form (guide.md, Module 1 step 10)."
+        },
+        {
+          "criterion": "Every step has an observable outcome (command output, named UI state, or an explicit check). Steps ending in a verb with nothing to observe score low \u2014 cite them in findings.",
+          "score": 4,
+          "finding": "Step 1 (\"Open a shell on the learner VM\") has no observable outcome in the guide body \u2014 it ends with the scoping sentence \"Every command in this lab runs in this shell\"; the plan states \"expected: a shell prompt on the VM\" but the guide step never tells the learner what to see (guide.md, Module 1 step 1; plan.md step outline 1)."
+        },
+        {
+          "criterion": "No marketing or motivational filler (\"Experience the power of \u2026\"), no unexplained jargon. Fluff lines dilute the step count a reader actually has to perform.",
+          "score": 4,
+          "finding": "No marketing filler, but \"NIM\" is used unexpanded four times in the module (steps 2, 8, 9, 11) and again in the Lab Credentials block (\"the local LLM NIM port\") \u2014 never defined as NVIDIA Inference Microservice; also the module intro says \"ten quick checks\" while the module has 11 numbered steps (defensible since step 1 is setup, but a counting snag for the reader) (guide.md, Module 1 intro, steps 2/8/9/11, Lab Credentials block)."
+        },
+        {
+          "criterion": "Within the module, the same object/feature is always called the same thing (cite synonym drift in the finding).",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-01-explore-the-stack",
+      "rubric": "analytic/technical-accuracy",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "commands-valid",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "credential-alignment",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fabrication",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "expected-output-plausible",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-01-explore-the-stack",
+      "rubric": "holistic/module-quality",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "One overall judgment: would a reader complete this module top-to-bottom, first try, without going back? Score `overall` 1\u20135.",
+          "score": 4,
+          "finding": "guide.md L130 (Module 1 step 10) and L134 (step 11): the module's first shell\u2192browser transition never establishes how a learner's browser reaches the VM-local endpoints \u2014 step 1 (L62) gets the reader into an SSH shell, the credentials block (guide.md L17) says all endpoints are 'all local to the VM', and the only access documented is SSH (spec/09-environment-footprint.md L129) \u2014 so a first-time reader is momentarily stuck at step 10 ('Open the mock CMMS in the browser at http://localhost:8090') on which browser/transport to use (ssh -L port-forward, which the guide never names here, or VM console); step 11's '(or the port recorded in the prep log)' compounds it by referencing a prep-time artifact the learner does not have. A careful reader bridges both alone, so this is one minor wobble, not a blocker."
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-02-establish-the-baseline",
+      "rubric": "checklist/module-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "steps-implemented",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "expected-outputs",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "images-match-checklist",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "checkpoint-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "title-alignment",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-02-establish-the-baseline",
+      "rubric": "analytic/step-clarity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.2,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "actionable-steps",
+          "score": 4,
+          "finding": "guide.md, Module 2, step 3: 'Wait for processing to complete' is a passive wait-and-watch rather than a single active action, and step 5 bundles two confirmations (LVS UI no-alerts check plus the empty mock CMMS list check at http://localhost:8090) into one step."
+        },
+        {
+          "criterion": "ui-actions",
+          "score": 3,
+          "finding": "guide.md, Module 2, step 2: the UI step bolds the action (**play the staged normal-state clip(s) through VSS**) but names no control in bold with quotes; the script's printed procedure in step 1's output (scripts/demo/01-baseline.sh) repeats the same verb without naming a control, so the learner must locate the play/ingest control in the LVS UI themselves."
+        },
+        {
+          "criterion": "expected-results",
+          "score": 4,
+          "finding": "guide.md, Module 2, step 3: the observable outcome is the screenshot placeholder ('<< INSERT SCREENSHOT: LVS UI showing the normal-state clip processed with a healthy pipeline status and no alerts >>') plus the generic 'pipeline state is healthy', which does not name the UI element or status field to check; steps 1, 4, and 5 have concrete outputs/states."
+        },
+        {
+          "criterion": "no-fluff",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "terminology-consistent",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-02-establish-the-baseline",
+      "rubric": "analytic/technical-accuracy",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.5,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "commands-valid",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "credential-alignment",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fabrication",
+          "score": 4,
+          "finding": "guide.md L182 (Module 2 step 2) states 'captioning and summarization, done by the local VLM'; the loaded context (spec/02-architecture.md beat 1: 'VST ingest \u2192 RT-VLM captioning \u2192 LVS (LLM via shim)', and LVS env LLM_MODE=remote) assigns captioning to the RT-VLM and the LVS summary stage to the shared remote LLM through the auth-shim, so attributing the summarization to the local VLM is a confident specific claim with no context basis."
+        },
+        {
+          "criterion": "expected-output-plausible",
+          "score": 4,
+          "finding": "guide.md L160-179 (Module 2 step 1): the output block labeled '(this is the script's actual output)' contains a blank line between 'VSS agent + LVS healthy' (L164) and the header '== staging the normal-state clips at /data/video ==' (L166) that scripts/demo/01-baseline.sh does not emit (no echo between those two lines in the script); all other lines of the block \u2014 staged clip names, 'staged: 2 clip(s) at /data/video', the beat-1 procedure, 'expected observation (02 beat 1):', and the '01-baseline: ready \u2014 next: scripts/demo/02-anomaly.sh' trailer \u2014 match the script's actual output verbatim."
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-03-detect-the-anomaly",
+      "rubric": "checklist/module-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "steps-implemented",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "expected-outputs",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "images-match-checklist",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "checkpoint-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "title-alignment",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-03-detect-the-anomaly",
+      "rubric": "analytic/step-clarity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.6,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "actionable-steps",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "ui-actions",
+          "score": 4,
+          "finding": "guide.md Module 3, step 2 (L226) and step 3 (L228): UI interactions are phrased as bold actions ('**play the anomaly segment**', '**Watch** the LVS UI for the alert') rather than naming the control in bold with quotes per the rubric pattern (e.g., Click the **\"Play\"** button); the release-dependent LVS page/control labels are deferred to the printed procedure and prep-recorded URL ('instruction of record' clause, L226), but no specific control is ever named."
+        },
+        {
+          "criterion": "expected-results",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fluff",
+          "score": 4,
+          "finding": "guide.md Module 3, step 4 (L234): the '**Why this matters:**' line 'The ref you record now is cited on the work order in Module 5' duplicates the step body at L232 ('it becomes the `anomaly_ref` on the work order in Module 5'), and the same fact is stated a third time in the checkpoint (L236); no marketing or unexplained jargon elsewhere, so the blemish is a single redundant line rather than filler diluting the steps."
+        },
+        {
+          "criterion": "terminology-consistent",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-03-detect-the-anomaly",
+      "rubric": "analytic/technical-accuracy",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "commands-valid",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "credential-alignment",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fabrication",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "expected-output-plausible",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-03-detect-the-anomaly",
+      "rubric": "holistic/module-quality",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "overall",
+          "score": 4,
+          "finding": "Step 4 (guide.md L232) asks the learner to read the 'anomaly timestamp' off the LVS UI alert, but neither the module text nor the step-1 printed procedure output indicates where in the alert that timestamp is displayed; plan.md ('Expected outputs') notes the LVS alert content is release-dependent and deferred to the VM dry run. A first-time reader would have to hunt the alert screen for the field; the example values ('clip-anomaly-01', '@00:42') and the script line 'keep the alert's clip reference + timestamp on screen' are what a careful reader uses to bridge it. Everything else (starting state from Module 2, LVS UI URL resolution at step 2 L226, wait-time signalling at step 3, checkpoint at L236 matching the plan's success criteria) flows without a genuine gap."
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-04-run-the-agentic-diagnosis",
+      "rubric": "checklist/module-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "steps-implemented",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "expected-outputs",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "images-match-checklist",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "checkpoint-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "title-alignment",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-04-run-the-agentic-diagnosis",
+      "rubric": "analytic/step-clarity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.6,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "actionable-steps",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "ui-actions",
+          "score": 4,
+          "finding": "guide.md L280 (Module 4 step 2): the UI control is written as backticked `/new` rather than the rubric's bold + quoted control-name form; step 4's four prompt labels (L286-289) are bolded but never quoted. No UI action in the module (steps 2-4) uses the bold+quoted format, though every control is otherwise named precisely and no vague 'open the page' phrasing appears."
+        },
+        {
+          "criterion": "expected-results",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fluff",
+          "score": 4,
+          "finding": "guide.md L242 (Module 4 intro): 'This is the heart of the lab.' is a motivational filler line; additionally the verbatim step-1 script output carries unexplained internal spec references \u2014 '(02 beat 3; build doc 9.4)' at L262 and '(02 beat 4)' in the beat-4 paragraph (L267-272) \u2014 that a learner cannot resolve. Neither blocks a step, so the blemish is smaller than the anchor gap."
+        },
+        {
+          "criterion": "terminology-consistent",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-04-run-the-agentic-diagnosis",
+      "rubric": "analytic/technical-accuracy",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "commands-valid",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "credential-alignment",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fabrication",
+          "score": 4,
+          "finding": "guide.md L293 (Module 4 step 4 Note): 'These four answers are the whole steering surface of the run \u2014 they determine which clip is analyzed, what the VLM looks for, and which corpus documents the agent retrieves' \u2014 the clip is already fixed by the pasted instruction in step 3 (clip-anomaly-01), so it is not determined by the HITL answers, and the spec is silent on the per-parameter\u2192component mapping (spec/02-architecture.md beat-3 row only states the four parameters are collected), a confident specific claim with no loaded-context basis."
+        },
+        {
+          "criterion": "expected-output-plausible",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-04-run-the-agentic-diagnosis",
+      "rubric": "holistic/module-quality",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "One overall judgment: would a reader complete this module top-to-bottom, first try, without going back? Score `overall` 1\u20135.",
+          "score": 4,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-06-triage-a-second-anomaly",
+      "rubric": "checklist/module-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "Every step from the module plan's step outline appears in the section, in order, none dropped (rewording is fine; missing or reordered steps are not).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "For every planned step with an expected result, the section shows it (verbatim output, a named UI state, or an explicit check).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "The number of image lines (ImageProxy or `<< INSERT SCREENSHOT: \u2026 >>` placeholder) matches the plan's image checklist, and each has a specific description of what the reader should see.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "If the module has \u22653 command steps, a `> \u2705 **Checkpoint:** \u2026` line states the module plan's success criterion verbatim or near-verbatim. (A criterion that is not itself a verifiable end state is a plan-level defect \u2014 it fails `module-plan-completeness` `success-criteria`; score this criterion met if the checkpoint states the plan's criterion faithfully.)",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "The section heading title matches the module `title` from the plan.",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-06-triage-a-second-anomaly",
+      "rubric": "analytic/technical-accuracy",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "commands-valid",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "credential-alignment",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "no-fabrication",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "expected-output-plausible",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-06-triage-a-second-anomaly",
+      "rubric": "holistic/module-quality",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "overall",
+          "score": 4,
+          "finding": "Module 6 step 3 (guide.md, '## Module 6: Triage a Second Anomaly'): 'paste the same instruction shape (the one-instruction kick-off again)' never gives the exact paste text for the second run or says to substitute the second clip's reference \u2014 a first-time reader must flip back to Module 4 to copy 'I want to generate a video summary report for clip-anomaly-01.' and decide the clip ref themselves; the second clip's reference (e.g. clip-anomaly-02, implied only by mock-wo/tests/conftest.py VALID_NOTE anomaly_ref 'vss-alert-clip-anomaly-02-01:15') is never named in the module. Similarly, step 2(a) (guide.md): 'the fixture manifest marks it `role: anomaly`' does not uniquely identify the curated second clip because fixtures/video/manifest.yaml already marks clip-anomaly-01 as role: anomaly \u2014 the reader must infer 'the role: anomaly clip I have not played yet'. Both wobbles are bridged alone by a careful reader who completed Modules 2-4 (LVS UI URL, instruction shape, four HITL parameters, prep-log.md all previously established); no referenced state is missing and no step order fights the reader, so this is a 4, not a 3."
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "guide",
+      "rubric": "checklist/guide-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "all-modules-present",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "objectives-covered",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "introduction-consistent",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "summary-honest",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "credentials-consistent",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "guide",
+      "rubric": "analytic/terminology-consistency",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.8,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "Product and feature names are spelled the same way everywhere and match the product profile in ~/.holagent (first mention may expand, subsequent use stays constant).",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "The same object/feature is never given two names across modules (cite both spellings and their module locations in the finding).",
+          "score": 4,
+          "finding": "The same off-VM LLM endpoint is called 'shared LLM endpoint' / 'shared endpoint' / 'shared off-VM endpoint' (Lab Credentials L20 and L28; Module 1 L64, L68, L74, L118, L148; Summary L409) but 'custom endpoint' in Module 1 step 11 (guide.md L144) and Module 4 step 1 (guide.md L244 and the quoted script output L252). The guide links the two only by co-reference in Module 1 step 11 ('the same id you saw in step 2 ... NemoClaw uses the custom endpoint, not a local NIM') and never states the terms denote the same endpoint, so the object carries two names across Modules 1 and 4."
+        },
+        {
+          "criterion": "Demo credentials appear verbatim every time (identical username, password, host:port) \u2014 a single rephrased occurrence is a drift.",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "House terminology is used: \"module\" (not \"challenge/phase/lesson\"), \"checkpoint\", \"Lab Credentials\", \"Table of Contents\".",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "guide",
+      "rubric": "holistic/guide-quality",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 5.0,
+      "rounds": 2,
+      "findings": [
+        {
+          "criterion": "Score `overall` 1\u20135.",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:35:53.250Z"
+    },
+    {
+      "scope": "module-01-explore-the-stack",
+      "rubric": "checklist/module-completeness",
+      "kind": "checklist",
+      "status": "passed",
+      "score": 1.0,
+      "rounds": 3,
+      "findings": [
+        {
+          "criterion": "Every step from the module plan's step outline appears in the section, in order, none dropped (rewording is fine; missing or reordered steps are not).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "For every planned step with an expected result, the section shows it (verbatim output, a named UI state, or an explicit check).",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "The number of image lines (ImageProxy or `<< INSERT SCREENSHOT: \u2026 >>` placeholder) matches the plan's image checklist, and each has a specific description of what the reader should see.",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "If the module has \u22653 command steps, a `> \u2705 **Checkpoint:** \u2026` line states the module plan's success criterion verbatim or near-verbatim. (A criterion that is not itself a verifiable end state is a plan-level defect \u2014 it fails `module-plan-completeness` `success-criteria`; score this criterion met if the checkpoint states the plan's criterion faithfully.)",
+          "score": 1,
+          "finding": null
+        },
+        {
+          "criterion": "The section heading title matches the module `title` from the plan.",
+          "score": 1,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:56:56.118Z"
+    },
+    {
+      "scope": "module-02-establish-the-baseline",
+      "rubric": "holistic/module-quality",
+      "kind": "holistic",
+      "status": "passed",
+      "score": 4.0,
+      "rounds": 3,
+      "findings": [
+        {
+          "criterion": "One overall judgment: would a reader complete this module top-to-bottom, first try, without going back? Score `overall` 1\u20135.",
+          "score": 4,
+          "finding": "Module 2 step 2 (guide.md): the learner is told to open \"the LVS UI (the URL the step-1 output printed)\", but the Lab Credentials block and Module 1 step 3 name that same surface \"VSS agent (UI + API)\" at http://localhost:8000, and the guide never states that the prep-recorded LVS UI URL is the UI probed in Module 1 \u2014 a first-time reader may pause at step 2 wondering which UI to open; the step 1 note (\"the printed procedure (step 1) and the prep-recorded URL are the instruction of record\") and step 2 note bridge it. Secondary micro-blemish in step 1: the output block is labeled \"this is the script's actual output\" with \"the one variable part\" being the LVS UI URL, but the manifest comment (fixtures/video/manifest.yaml, ADR-004) says clip ids/filenames are updated when curated clips are swapped at prep, so the `staged:` filenames are also prep-variable (the procedure is count-based \u2014 \"the 2 clip(s) at /data/video\" \u2014 so the reader is still not stuck). Round-2 CWD finding verified fixed: Module 1 step 1 now establishes the repo checkout on the VM and Module 2 step 1 says to cd into the checkout first if not already there."
+        }
+      ],
+      "updated_at": "2026-09-03T22:56:56.118Z"
+    },
+    {
+      "scope": "module-06-triage-a-second-anomaly",
+      "rubric": "analytic/step-clarity",
+      "kind": "analytic",
+      "status": "passed",
+      "score": 4.4,
+      "rounds": 3,
+      "findings": [
+        {
+          "criterion": "actionable-steps",
+          "score": 4,
+          "finding": "Step 4 (guide.md L371) bundles two actions (start a fresh session and paste) and says only \"paste the same instruction shape\" \u2014 the instruction text to type is never given and the second clip's reference is not named anywhere in the module (implicit only via fixtures/video/manifest.yaml from step 2). Step 2 (L367) also leaves the staging check implicit: no command is given to verify whether a second curated anomaly clip is actually staged at /data/video."
+        },
+        {
+          "criterion": "ui-actions",
+          "score": 4,
+          "finding": "Step 3 path (a) (guide.md L369) bolds the action phrase \"play the second curated anomaly clip through the LVS UI\" but no LVS UI control is named in bold with quotes (labels are release-dependent per the Module 2 note and the prep-recorded procedure is the instruction of record, so this is defensible but not the rubric's ideal form); the quoted bold control pattern is only applied to the \"/new\" control in step 4 (L371)."
+        },
+        {
+          "criterion": "expected-results",
+          "score": 4,
+          "finding": "Step 2 (guide.md L367) has no observable outcome \u2014 it ends at the decision rule \"use path (a); otherwise use path (b)\" with no command output or named UI state to check (e.g. what a directory listing of /data/video should show, or what the manifest entry should read) so the reader cannot verify their own path determination."
+        },
+        {
+          "criterion": "no-fluff",
+          "score": 5,
+          "finding": null
+        },
+        {
+          "criterion": "terminology-consistent",
+          "score": 5,
+          "finding": null
+        }
+      ],
+      "updated_at": "2026-09-03T22:56:56.118Z"
+    }
+  ]
+}

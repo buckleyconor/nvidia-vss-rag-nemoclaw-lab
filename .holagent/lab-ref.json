@@ -1,0 +1,8 @@
+{
+  "repo": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+  "origin": "generated",
+  "adopted_stages": [],
+  "spec_dir": "spec",
+  "platforms": ["vcd"],
+  "environments": []
+}

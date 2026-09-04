@@ -1,0 +1,12 @@
+{
+ "slug": "fixtures-harness",
+ "n": 6,
+ "title": "Fixture manifests + provisional fixtures",
+ "repo": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+ "test": "python3 -m venv .venv && .venv/bin/pip install -q -r mock-wo/requirements.txt -r mock-wo/requirements-dev.txt && .venv/bin/pytest tests/test_fixtures.py -q",
+ "exit_code": 0,
+ "ok": true,
+ "output_tail": "...\n3 passed in 0.02s",
+ "recorded_at": "2026-09-03T08:25:33Z",
+ "note": "Replicated hol_build_test (hol_* tools cannot reach this guide root from the session sandbox). TC-042/043/044 pass. ADR-004 provisional fixtures committed: fixtures/video (3 synthetic ftyp-at-offset-4 MP4 probes: 2 normal + 1 anomaly) + manifest in the flat format the M5 demo scripts parse (contract verified by replaying the parsers); fixtures/corpus (manual-01/log-01/schedule-01 .md, all three beat-3 content types, manual carries the 02 example citation verbatim) + manifest with per-doc sha256; fixtures/rag-index manifest (collection demo_corpus, built_from = sha256 of newline-joined per-doc sha256s in manifest order \u2014 rule declared in the manifest header, no provisional artifact: canonical path is ingest-at-prep per 25-ingest-corpus.sh). tests/test_fixtures.py (L4) added: manifest parse, file existence/non-empty, ftyp@4 pure-Python, content-type coverage == {manual, log, schedule}, sha256 integrity, built_from aggregate recompute. Closing gate re-run green: run-dev-tests.sh 59 passed (100% cov, ruff clean, 11 scripts bash -n) + container-smoke.sh PASS. All 6 milestones complete."
+}

@@ -1,0 +1,12 @@
+{
+  "slug": "mock-wo-ui",
+  "n": 2,
+  "title": "Mock WO UI views",
+  "repo": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+  "test": "python3 -m venv .venv && .venv/bin/pip install -q -r mock-wo/requirements.txt -r mock-wo/requirements-dev.txt && .venv/bin/pytest mock-wo/tests/test_ui.py -q",
+  "exit_code": 0,
+  "ok": true,
+  "output_tail": ".........                                                                [100%]\n9 passed in 0.16s",
+  "recorded_at": "2026-09-02T21:52:17Z",
+  "note": "Replicated hol_build_test (hol_* tools cannot reach this guide root from the session sandbox). Parent-implemented (builder agent unusable on this local model's output cap; disclosed in M1 report). Fix round 1 (checklist decisions-reported): inline <style> extracted to app/static/style.css per 03 tech table; 03 layout tree + 08 item 33 updated; checklist re-scored 1.0. Post-analytic: tests-prove-the-claim finding addressed \u2014 multi-row UI ordering test added, gate re-run 9 passed."
+}

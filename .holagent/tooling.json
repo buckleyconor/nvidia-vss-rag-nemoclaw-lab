@@ -1,0 +1,5 @@
+{
+  "tooling": "holagents@0.2.0",
+  "tooling_commit": "77bc59a",
+  "note": "Tooling version that produced/verified this guide state (linter validation, scored review). The guide root IS the lab repo: guide.md + lab-prep.md + .holagent/ at the repo root."
+}

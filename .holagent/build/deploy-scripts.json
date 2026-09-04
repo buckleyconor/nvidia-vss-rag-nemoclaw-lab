@@ -1,0 +1,12 @@
+{
+ "slug": "deploy-scripts",
+ "n": 5,
+ "title": "Prep + demo scripts with the start-order gate",
+ "repo": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+ "test": "bash scripts/prep/20-start.sh --dry-run && for f in scripts/prep/*.sh scripts/demo/*.sh scripts/test/*.sh; do bash -n \"$f\"; done",
+ "exit_code": 0,
+ "ok": true,
+ "output_tail": "20-start: --dry-run: plan printed; no Docker invoked; exiting 0.\nexit 0 (dry-run plan printed, bash -n all 11 scripts clean)",
+ "recorded_at": "2026-09-03T07:59:02Z",
+ "note": "Replicated hol_build_test (hol_* tools cannot reach this guide root from the session sandbox). TC-039/TC-040 pass: 20-start.sh --dry-run exits 0, prints shim+mock-wo -> VSS -> RT-VLM gate -> RAG -> NemoClaw in order, no Docker invocation (asserted by tests/test_start_order.py with a recording docker stub, negative-control verified); all 11 scripts pass bash -n. Deliverables: scripts/prep/{00,10,20,25,30,40} + scripts/demo/{01,02,03} written against the REAL pinned tags (VSS v3.2.1 @ 7640d917, RAG v2.6.2 @ f20716d7 \u2014 cloned and inspected at build time: dev-profile.sh flags, init_nemoclaw.sh custom-provider env + --policy-file, nims.yaml six-lab-NIM service names, vectordb ES-default/Milvus-opt-in, in-tree docs). Spec deltas surfaced, not silently fixed: (a) 05's --cov=mock-wo.app is not importable (package is `app` inside mock-wo/, hyphen) \u2014 run-dev-tests.sh uses --cov=mock-wo/app (same files, same 90% gate); (b) config/rag.env gained APP_EMBEDDINGS_SERVERURL=nemotron-embedding-ms:8000/v1 (RAG v2.6.2 compose/blueprint-.env defaults point at the vlm-embedding NIM the lab never starts; TC-035 extended to pin it); (c) requirements-dev.txt gained pytest-cov==5.0.0 (the 05 --cov gate needs the plugin). scripts/test/run-dev-tests.sh added (M5 owns the closing gate). Closing gate re-run green: run-dev-tests.sh 56 passed (100% cov) + container-smoke.sh PASS."
+}

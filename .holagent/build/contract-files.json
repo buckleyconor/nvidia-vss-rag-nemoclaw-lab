@@ -1,0 +1,12 @@
+{
+  "slug": "contract-files",
+  "n": 4,
+  "title": "Shim + config contract files",
+  "repo": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+  "test": "python3 -m venv .venv && .venv/bin/pip install -q -r mock-wo/requirements.txt -r mock-wo/requirements-dev.txt && .venv/bin/pytest tests/test_config_contracts.py -q",
+  "exit_code": 0,
+  "ok": true,
+  "output_tail": "..........                                                               [100%]\n10 passed in 0.09s",
+  "recorded_at": "2026-09-02T23:49:19Z",
+  "note": "Replicated hol_build_test (hol_* tools cannot reach this guide root from the session sandbox). Parent-implemented (disclosed M1). Spec fixes: pyyaml (08-35), SHARED_ENDPOINT_URL (08-36), verbatim-as-pinned-properties (08-37), post-scoring: config_rag.yml frag assertion + item 10 wording (08-38). Final gate: 10 passed."
+}

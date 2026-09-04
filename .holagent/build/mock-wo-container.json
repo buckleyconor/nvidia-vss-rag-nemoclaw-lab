@@ -1,0 +1,12 @@
+{
+  "slug": "mock-wo-container",
+  "n": 3,
+  "title": "Mock WO container + compose service",
+  "repo": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+  "test": "bash scripts/test/container-smoke.sh",
+  "exit_code": 0,
+  "ok": true,
+  "output_tail": "ok at 0.5 s: {\"status\":\"ok\",\"db\":\"ok\"}\n== TC-030: container API round-trip ==\n== TC-031: healthcheck wiring ==\nHealth status: healthy\ncontainer-smoke: PASS (TC-028..TC-031)",
+  "recorded_at": "2026-09-02T22:06:06Z",
+  "note": "Replicated hol_build_test (hol_* tools cannot reach this guide root from the session sandbox). Parent-implemented (disclosed M1). Image built on aarch64 dev machine (arch-neutral check; x86 re-run at VM prep per 05). Spec fix applied this round: image-level HEALTHCHECK added to the 03 Dockerfile contract (08 item 34) \u2014 TC-031 cannot pass on a raw docker run container without it."
+}
