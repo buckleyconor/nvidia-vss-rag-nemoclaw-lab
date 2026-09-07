@@ -64,6 +64,10 @@ if not m:
     sys.exit("40-nemoclaw: FAIL — vss-backend section not found in the preset (vendor layout moved? record and adapt)")
 end = re.search(r"^  [a-z_]+:\n", text[m.end():], re.MULTILINE)
 section = text[m.end():m.end() + (end.start() if end else len(text) - m.end())]
+# the ORIGINAL span of the section in `text`. `section` is mutated below,
+# so len(section) can no longer be used to find where the section ended —
+# using it there swallows len(blocks) characters of the NEXT section.
+orig_len = len(section)
 
 added, already = [], []
 blocks = []
@@ -89,7 +93,7 @@ if blocks:
     if not b:
         sys.exit("40-nemoclaw: FAIL — vss-backend binaries: marker not found in the preset (vendor layout moved? record and adapt)")
     section = section[:b.start()] + "".join(blocks) + section[b.start():]
-    text = text[:m.end()] + section + text[m.end() + len(section):]
+    text = text[:m.end()] + section + text[m.end() + orig_len:]
 
 open(out_path, "w").write(text)
 print(f"lab endpoints added: {added or []}; already granted by the preset: {already or []}")

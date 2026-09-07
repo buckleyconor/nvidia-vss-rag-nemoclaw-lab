@@ -22,6 +22,10 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# every relative path below (mock-wo/, compose/) is repo-root relative, and
+# the steps `cd "$REPO_ROOT"` to return here — so start there regardless of
+# where the script was invoked from.
+cd "$REPO_ROOT"
 LAB_ENV="${LAB_ENV:-$HOME/.config/vss/lab.env}"
 VSS_DIR="${VSS_DIR:-$HOME/vss-public}"
 RAG_DIR="${RAG_DIR:-/data/rag}"
@@ -103,7 +107,12 @@ echo "== STEP 1/5  auth-shim + mock-wo =="
 echo "building mock-wo:lab on the VM (arch check for x86 — 03/05)"
 docker build -t mock-wo:lab -f mock-wo/Dockerfile mock-wo >/dev/null
 echo "starting auth-shim (compose/docker-compose.shim.yml, env from $LAB_ENV — values never printed)"
-docker compose --env-file "$LAB_ENV" -f compose/docker-compose.shim.yml up -d >/dev/null
+# lab.env was sourced with `set -a` above, so SHARED_* are already exported
+# and Compose picks them up from the environment. Deliberately NOT
+# --env-file: that re-parses lab.env with Compose's KEY=VAL parser, which
+# reads `export FOO=bar` as a key named "export FOO" and strips quotes
+# differently from the shell that sources the same file.
+docker compose -f compose/docker-compose.shim.yml up -d >/dev/null
 echo "starting mock-wo (compose/mock-wo.yml)"
 docker compose -f compose/mock-wo.yml up -d >/dev/null
 SHIM_OK=""
@@ -132,7 +141,8 @@ fi
 LVS_ENV=$(cd "$VSS_DIR" && find . -name '.env' -path '*lvs*' | head -1)
 [ -n "$LVS_ENV" ] \
     || fail "no LVS .env under $VSS_DIR (expected: find . -name '.env' -path '*lvs*' — 02)"
-LVS_ENV="$VSS_DIR/$LVS_ENV"
+LVS_ENV="$VSS_DIR/${LVS_ENV#./}"
+LVS_DIR="$(dirname "$LVS_ENV")"
 echo "applying the repo LVS .env overlay to $LVS_ENV (values + the three API keys from lab.env)"
 python3 - "$LVS_ENV" "$REPO_ROOT/config/lvs.env" <<'PY'
 import os
@@ -173,22 +183,25 @@ PY
 # config_rag.yml; the default config.yml has frag OFF). Prep verifies the
 # content against the release's copy and records any diff (08).
 install -Dm 644 "$REPO_ROOT/config/config_rag.yml" \
-    "$VSS_DIR/deploy/docker/developer-profiles/dev-profile-lvs/vss-agent/configs/config_rag.yml"
-LLM_MODE=$(grep -E '^LLM_MODE=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"")
+    "$LVS_DIR/vss-agent/configs/config_rag.yml"
+LLM_MODE=$(grep -E '^LLM_MODE=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" || true)
 REMOTE_LLM=no
 VSS_ARGS=(up -p lvs -H RTXPRO6000BW --vlm-env-file "$REPO_ROOT/config/vlm.env")
 if [ "$LLM_MODE" = "remote" ]; then
     # CLI equivalent of the .env LLM_MODE=remote (02 config contract — the
     # value is verified at prep; requires LLM_ENDPOINT_URL on the host).
-    LLM_ENDPOINT_URL=$(grep -E '^LLM_ENDPOINT_URL=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"")
+    LLM_ENDPOINT_URL=$(grep -E '^LLM_ENDPOINT_URL=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" || true)
     [ -n "$LLM_ENDPOINT_URL" ] || fail "LLM_MODE=remote but LLM_ENDPOINT_URL missing from config/lvs.env"
     export LLM_ENDPOINT_URL
     VSS_ARGS+=(--use-remote-llm)
     REMOTE_LLM=yes
 fi
 echo "starting VSS (dev-profile.sh up, profile lvs, hardware RTXPRO6000BW, vlm-env-file config/vlm.env, remote LLM via shim: $REMOTE_LLM)"
-cd "$VSS_DIR/deploy/docker"
-scripts/dev-profile.sh "${VSS_ARGS[@]}"
+DEV_PROFILE=$(find "$VSS_DIR" -type f -name dev-profile.sh | head -1)
+[ -n "$DEV_PROFILE" ] \
+    || fail "dev-profile.sh not found under $VSS_DIR (vendor layout moved? record and adapt — 02/08)"
+cd "$(dirname "$DEV_PROFILE")/.."
+"$DEV_PROFILE" "${VSS_ARGS[@]}"
 cd "$REPO_ROOT"
 wait_http 90 10 30 "http://127.0.0.1:8000/health"
 wait_http 90 10 30 "http://127.0.0.1:38111/v1/ready"
@@ -218,7 +231,8 @@ set -a
 . "$REPO_ROOT/config/rag.env"
 set +a
 export NGC_API_KEY="$NGC_CLI_API_KEY"
-export USERID="$(id -u)"
+USERID="$(id -u)"
+export USERID
 echo "starting the lab's six retrieval NIMs (explicit service names — the LLM NIM is NEVER started; the :30081-absent invariant, 02/09)"
 echo "first run pulls NIM images + weights: budget 45-70 min (build doc Phase 2)"
 docker compose -f deploy/compose/nims.yaml up -d \
@@ -233,12 +247,17 @@ docker compose -f deploy/compose/docker-compose-rag-server.yaml up -d
 cd "$REPO_ROOT"
 wait_http 60 10 30 "http://127.0.0.1:8081/v1/health"
 wait_http 60 10 30 "http://127.0.0.1:8082/v1/health"
-for c in nemotron-embedding-ms nemotron-ranking-ms \
-         compose-page-elements-1 compose-graphic-elements-1 \
-         compose-table-structure-1 compose-nemotron-ocr-1; do
-    state=$(docker inspect --format '{{.State.Status}}' "$c" 2>/dev/null) || state="missing"
+# resolve each NIM by SERVICE name via Compose — container names carry the
+# project prefix, which is derived from the compose file's directory and is
+# not ours to assume.
+for svc in nemotron-embedding-ms nemotron-ranking-ms \
+           page-elements graphic-elements table-structure nemotron-ocr; do
+    cid=$(docker compose -f "$RAG_DIR/deploy/compose/nims.yaml" ps -q "$svc" 2>/dev/null | head -1 || true)
+    [ -n "$cid" ] \
+        || fail "RAG gate failed: NIM service $svc has no container (six NIMs healthy — 02 step 4)"
+    state=$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null) || state="missing"
     [ "$state" = "running" ] \
-        || fail "RAG gate failed: NIM container $c is '$state', want running (six NIMs healthy — 02 step 4)"
+        || fail "RAG gate failed: NIM service $svc is '$state', want running (six NIMs healthy — 02 step 4)"
 done
 log "- 20-start step 4: RAG up (:8081/v1/health, :8082/v1/health; six NIM containers running: nemotron-embedding-ms, nemotron-ranking-ms, page-elements, graphic-elements, table-structure, nemotron-ocr; embedding endpoint = nemotron-embedding-ms per config/rag.env)"
 

@@ -7,9 +7,13 @@ YAML parsing uses the pinned dev dependency pyyaml (03 dev table, added
 at M4 — 08 item 35).
 """
 
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 REPO = Path(__file__).resolve().parents[1]
@@ -41,6 +45,57 @@ def test_tc032_shim_compose_contract():
     assert shim["image"] == "nginx:1.27-alpine"
     assert "8080:8080" in shim["ports"]
     assert "demo-net" in shim["networks"]
+
+
+COMPOSE_FILES = ("compose/docker-compose.shim.yml", "compose/mock-wo.yml")
+
+
+@pytest.mark.parametrize("rel", COMPOSE_FILES)
+def test_compose_project_is_valid(rel):
+    """Every network a service joins must be declared.
+
+    Asserting that a service *references* demo-net (TC-032 above) passed
+    happily on a file Docker rejected outright:
+        service "auth-shim" refers to undefined network demo-net:
+        invalid compose project
+    Only `docker compose config` catches that, so ask Docker.
+    """
+    if shutil.which("docker") is None:
+        pytest.skip("docker CLI not available")
+    proc = subprocess.run(
+        ["docker", "compose", "-f", rel, "config", "-q"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "SHARED_API_KEY": "x", "SHARED_ENDPOINT_URL": "http://u/v1"},
+        timeout=60,
+    )
+    assert proc.returncode == 0, f"{rel} is not a valid compose project:\n{proc.stderr}"
+
+
+def test_shim_never_puts_the_api_key_on_the_command_line():
+    """Compose interpolates ${...} in the YAML before the container sees it.
+
+    An explicit `command: sh -c "envsubst '${SHARED_API_KEY} ...'"` therefore
+    (a) bakes the secret into the container command line, readable via
+    `docker inspect` — breaking the 04 never-logged hard rule — and
+    (b) hands envsubst a SHELL-FORMAT naming no variables, so nothing is
+    substituted and nginx dies on the literal proxy_pass ${SHARED_ENDPOINT_URL}.
+    The nginx entrypoint's /etc/nginx/templates mechanism is the contract.
+    """
+    data = yaml.safe_load((REPO / "compose/docker-compose.shim.yml").read_text())
+    shim = data["services"]["auth-shim"]
+    for field in ("command", "entrypoint"):
+        rendered = str(shim.get(field, ""))
+        assert "SHARED_API_KEY" not in rendered, (
+            f"auth-shim {field} references SHARED_API_KEY; Compose interpolates it "
+            f"into the container command line. Use the nginx templates mechanism."
+        )
+    mounts = [v.split(":")[1] for v in shim["volumes"] if v.count(":") >= 1]
+    assert "/etc/nginx/templates/default.conf.template" in mounts, (
+        "the nginx template must mount under /etc/nginx/templates so the image "
+        "entrypoint runs envsubst against the real container environment"
+    )
 
 
 def test_tc033_shim_nginx_template():

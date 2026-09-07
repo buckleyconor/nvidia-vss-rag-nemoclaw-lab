@@ -33,8 +33,10 @@ fail() { echo "00-host-prep: FAIL — $*" >&2; exit 1; }
 
 command -v sudo >/dev/null 2>&1 || [ "$(id -u)" = "0" ] \
     || fail "run as root (the VM is single-user; 04 threat model)"
-SUDO=""
-[ "$(id -u)" = "0" ] || SUDO="sudo"
+# Array, not a scalar: as root the expansion must vanish entirely.
+# "$SUDO" with SUDO="" expands to an empty command word -> 127.
+SUDO=()
+[ "$(id -u)" = "0" ] || SUDO=(sudo)
 
 if [ -t 0 ]; then
     echo "00-host-prep: this script is idempotent; re-running is safe."
@@ -60,7 +62,7 @@ log "- nvidia driver: $DRIVER_GOT (exact pin, 10 c4)"
 echo "== 2/8 Docker Engine [${DOCKER_MIN}, ${DOCKER_MAX}) + Compose >= ${COMPOSE_MIN} =="
 if ! command -v docker >/dev/null 2>&1; then
     echo "docker absent — installing via get.docker.com (then re-checking the window)"
-    curl -fsSL https://get.docker.com | "$SUDO" sh
+    curl -fsSL https://get.docker.com | "${SUDO[@]}" sh
 fi
 DOCKER_VER=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
 [ -n "$DOCKER_VER" ] || fail "docker daemon not reachable"
@@ -81,20 +83,20 @@ log "- docker compose: $COMPOSE_VER (>= ${COMPOSE_MIN})"
 echo "== 3/8 NVIDIA Container Toolkit >= ${CTK_MIN} =="
 if ! command -v nvidia-ctk >/dev/null 2>&1; then
     echo "toolkit absent — apt install nvidia-container-toolkit"
-    "$SUDO" apt-get update -qq
-    "$SUDO" apt-get install -y -qq nvidia-container-toolkit
+    "${SUDO[@]}" apt-get update -qq
+    "${SUDO[@]}" apt-get install -y -qq nvidia-container-toolkit
 fi
 CTK_VER=$(nvidia-ctk --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 [ -n "$CTK_VER" ] || fail "cannot parse nvidia-ctk version"
 ver_at_least "$CTK_VER" "$CTK_MIN" \
     || fail "NVIDIA Container Toolkit $CTK_VER < floor $CTK_MIN (09)"
-nvidia-ctk runtime configure --runtime=docker
+"${SUDO[@]}" nvidia-ctk runtime configure --runtime=docker
 echo "toolkit: $CTK_VER"
 log "- nvidia container toolkit: $CTK_VER (docker runtime configured)"
 
 # ---- 4. daemon.json: cgroupfs + default-shm-size 32g -----------------------
 echo "== 4/8 Docker daemon.json (cgroupfs, default-shm-size 32g) =="
-"$SUDO" python3 - <<'PY'
+"${SUDO[@]}" python3 - <<'PY'
 import json, os
 path = "/etc/docker/daemon.json"
 cfg = {}
@@ -118,7 +120,7 @@ if changed:
 else:
     print("daemon.json already carries cgroupfs + 32g shm")
 PY
-"$SUDO" systemctl restart docker
+"${SUDO[@]}" systemctl restart docker
 CGROUP_DRIVER=$(docker info --format '{{.CgroupDriver}}')
 [ "$CGROUP_DRIVER" = "cgroupfs" ] \
     || fail "daemon cgroup driver is $CGROUP_DRIVER, want cgroupfs (VSS prerequisite — 10 c6)"
@@ -133,14 +135,14 @@ log "- docker daemon: cgroupfs, default-shm-size 32g (10 c2/c6)"
 
 # ---- 5. sysctl (10 constraint 3 — Elasticsearch refuses to start otherwise)
 echo "== 5/8 sysctl /etc/sysctl.d/99-vss.conf =="
-"$SUDO" cat > /etc/sysctl.d/99-vss.conf <<'EOF'
+"${SUDO[@]}" tee /etc/sysctl.d/99-vss.conf >/dev/null <<'EOF'
 # 99-vss.conf — 10 constraint 3 (Elasticsearch refuses to start without
 # vm.max_map_count; the build document's failure modes).
 vm.max_map_count = 262144
 fs.file-max = 2097152
 net.core.somaxconn = 4096
 EOF
-"$SUDO" sysctl --system >/dev/null
+"${SUDO[@]}" sysctl --system >/dev/null
 for kv in "vm.max_map_count 262144" "fs.file-max 2097152" "net.core.somaxconn 4096"; do
     set -- $kv
     GOT=$(sysctl -n "$1")
@@ -158,8 +160,8 @@ fi
 NODE_MAJOR="${NODE_VER%%.*}"
 if [ "$NODE_MAJOR" != "$NODE_WANT" ]; then
     echo "node ${NODE_VER:-absent} -> installing NodeSource setup_20.x"
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_WANT}.x" | "$SUDO" bash -
-    "$SUDO" apt-get install -y -qq nodejs
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_WANT}.x" | "${SUDO[@]}" bash -
+    "${SUDO[@]}" apt-get install -y -qq nodejs
     NODE_VER=$(node --version | sed 's/^v//')
     NODE_MAJOR="${NODE_VER%%.*}"
 fi
@@ -173,11 +175,11 @@ log "   installer actually runs on is recorded by 40-nemoclaw.sh)"
 
 # ---- 7. /data directories (09 artifacts) -----------------------------------
 echo "== 7/8 /data directories =="
-"$SUDO" mkdir -p /data/vss-apps-data /data/corpus /data/video /data/nim-cache
+"${SUDO[@]}" mkdir -p /data/vss-apps-data /data/corpus /data/video /data/nim-cache
 # vendor-mandated tolerance accepted in 04: chmod 777 on the VSS data_log dir
 # (single-user VM, demo data only).
-"$SUDO" mkdir -p /data/vss-apps-data/data_log
-"$SUDO" chmod -R 777 /data/vss-apps-data/data_log
+"${SUDO[@]}" mkdir -p /data/vss-apps-data/data_log
+"${SUDO[@]}" chmod -R 777 /data/vss-apps-data/data_log
 for d in /data/vss-apps-data /data/corpus /data/video /data/nim-cache; do
     [ -d "$d" ] || fail "mkdir $d failed"
     echo "ok: $d"

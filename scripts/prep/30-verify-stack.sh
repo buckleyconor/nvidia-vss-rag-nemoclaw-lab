@@ -12,6 +12,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+RAG_DIR="${RAG_DIR:-/data/rag}"
 MODEL_ID="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
 PREP_LOG="$REPO_ROOT/prep-log.md"
 log() { printf '%s\n' "$*" >> "$PREP_LOG"; }
@@ -59,14 +60,20 @@ fi
 # the six lab NIMs: containers running (their Triton health surfaces are
 # vendor-internal; the L5 checklist confirms the healthy markers in
 # docker ps on the VM)
-for c in nemotron-embedding-ms nemotron-ranking-ms \
-         compose-page-elements-1 compose-graphic-elements-1 \
-         compose-table-structure-1 compose-nemotron-ocr-1; do
-    state=$(docker inspect --format '{{.State.Status}}' "$c" 2>/dev/null) || state="missing"
-    if [ "$state" = "running" ]; then
-        echo "PASS  NIM $c running"
+# resolve by SERVICE name via Compose — container names carry the project
+# prefix, which is derived from the compose file's directory, not ours to assume.
+for svc in nemotron-embedding-ms nemotron-ranking-ms \
+           page-elements graphic-elements table-structure nemotron-ocr; do
+    cid=$(docker compose -f "$RAG_DIR/deploy/compose/nims.yaml" ps -q "$svc" 2>/dev/null | head -1 || true)
+    if [ -z "$cid" ]; then
+        state="missing"
     else
-        echo "FAIL  NIM $c is '$state', want running" >&2
+        state=$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null) || state="missing"
+    fi
+    if [ "$state" = "running" ]; then
+        echo "PASS  NIM $svc running"
+    else
+        echo "FAIL  NIM $svc is '$state', want running" >&2
         FAILURES=$((FAILURES + 1))
     fi
 done

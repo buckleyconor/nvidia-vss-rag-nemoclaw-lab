@@ -29,17 +29,19 @@ log "## $(date -u +%Y-%m-%dT%H:%M:%SZ) — 10-clone-blueprints: tag-pinned clone
 
 clone_pinned() {
     # clone_pinned <dir> <url> <tag>
+    # stdout is the RESOLVED SHA and nothing else — every progress line
+    # here goes to stderr, or it lands in the caller's $(...) capture.
     local dir="$1" url="$2" tag="$3" sha
     if [ -d "$dir/.git" ]; then
         local cur
         cur=$(git -C "$dir" describe --tags --exact-match 2>/dev/null) || cur="<unknown tag>"
         [ "$cur" = "$tag" ] \
             || fail "$dir exists but is at $cur, want $tag — manual intervention (do not auto-delete a learner clone)"
-        echo "reusing existing $dir at $tag"
+        echo "reusing existing $dir at $tag" >&2
     elif [ -e "$dir" ]; then
         fail "$dir exists and is not a git checkout — manual intervention"
     else
-        echo "cloning $tag -> $dir"
+        echo "cloning $tag -> $dir" >&2
         git clone --branch "$tag" --depth 1 "$url" "$dir"
     fi
     sha=$(git -C "$dir" rev-parse HEAD)
@@ -59,7 +61,7 @@ echo "== recording the vendor facts the later scripts rely on =="
 # record the actual.
 LVS_ENV=$(cd "$VSS_DIR" && find . -name '.env' -path '*lvs*' | head -1)
 [ -n "$LVS_ENV" ] || fail "no LVS .env under $VSS_DIR (expected: find . -name '.env' -path '*lvs*')"
-log "- VSS LVS .env (actual at $VSS_TAG): $VSS_ENV"
+log "- VSS LVS .env (actual at $VSS_TAG): $LVS_ENV"
 
 [ -f "$VSS_DIR/deploy/docker/scripts/dev-profile.sh" ] \
     || fail "dev-profile.sh not found in $VSS_DIR (20-start.sh step 2 needs it)"
@@ -69,7 +71,9 @@ log "- VSS LVS .env (actual at $VSS_TAG): $VSS_ENV"
     || fail "VSS vss-agent configs dir not found (20-start.sh places config_rag.yml there)"
 log "- VSS: dev-profile.sh, init_nemoclaw.sh, vss-agent configs dir all present at $VSS_TAG"
 
-AGENT_VER=$(grep -m1 '^VSS_AGENT_VERSION=' "$VSS_DIR/$LVS_ENV" | cut -d= -f2- | tr -d "'\"")
+AGENT_VER=$(grep -m1 '^VSS_AGENT_VERSION=' "$VSS_DIR/$LVS_ENV" | cut -d= -f2- | tr -d "'\"" || true)
+[ -n "$AGENT_VER" ] \
+    || fail "VSS_AGENT_VERSION not found in $VSS_DIR/$LVS_ENV (vendor .env layout moved? record and adapt)"
 log "- VSS agent image default at $VSS_TAG: VSS_AGENT_VERSION=$AGENT_VER"
 # the agent image tag is ASSUMED to track the release tag (08 item 2) —
 # existence on nvcr.io is verified at prep and recorded here:
@@ -91,7 +95,8 @@ for f in docs/deploy-docker-self-hosted.md \
     [ -f "$RAG_DIR/$f" ] || fail "RAG $f not found at $RAG_TAG (vendor layout moved? record and adapt)"
 done
 ES_IMAGE=$(grep -oE 'docker\.elastic\.co/elasticsearch/elasticsearch:[0-9.]+' \
-    "$RAG_DIR/deploy/compose/vectordb.yaml" | head -1)
+    "$RAG_DIR/deploy/compose/vectordb.yaml" | head -1 || true)
+ES_IMAGE="${ES_IMAGE:-<not found — record as a prep finding>}"
 log "- RAG: in-tree docs + the four compose files used by 20-start.sh/25-ingest present at $RAG_TAG"
 log "- RAG Elasticsearch (actual at $RAG_TAG): $ES_IMAGE (expected docker.elastic.co/elasticsearch/elasticsearch:9.3.0 — 09; a mismatch is a prep finding)"
 

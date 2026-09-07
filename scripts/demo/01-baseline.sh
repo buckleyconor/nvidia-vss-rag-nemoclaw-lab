@@ -74,7 +74,7 @@ else
         echo "staged every repo fixture clip from fixtures/video/ (no manifest — verify the normal-state set manually)"
     fi
 fi
-COUNT=$(ls "$VIDEO_DIR"/*.mp4 2>/dev/null | wc -l)
+COUNT=$(find "$VIDEO_DIR" -maxdepth 1 -type f -name '*.mp4' 2>/dev/null | wc -l || true)
 [ "$COUNT" -gt 0 ] || fail "no .mp4 clips at $VIDEO_DIR after staging (provide the clips or fixtures/video/manifest.yaml — M6)"
 echo "staged: $COUNT clip(s) at $VIDEO_DIR"
 

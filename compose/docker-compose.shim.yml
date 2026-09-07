@@ -6,6 +6,16 @@
 # (instructor's lab.env — M5 20-start.sh wires --env-file):
 #   SHARED_API_KEY      — secret (04: never in the repo)
 #   SHARED_ENDPOINT_URL — non-secret upstream address (08 item 36)
+#
+# Substitution mechanism (build doc §5): the nginx:*-alpine entrypoint runs
+# envsubst over /etc/nginx/templates/*.template at container start, using
+# the container's real environment. Do NOT move this to an explicit
+# `command:` running envsubst — Compose interpolates ${...} in the YAML
+# before the container sees it, which both bakes SHARED_API_KEY into the
+# container command line (readable via `docker inspect`; breaks the 04
+# never-logged hard rule) and hands envsubst a SHELL-FORMAT naming no
+# variables, so nothing is substituted and nginx fails on the literal
+# proxy_pass ${SHARED_ENDPOINT_URL}.
 services:
   auth-shim:
     image: nginx:1.27-alpine
@@ -14,12 +24,11 @@ services:
     environment:
       - SHARED_API_KEY=${SHARED_API_KEY}
       - SHARED_ENDPOINT_URL=${SHARED_ENDPOINT_URL}
-    command: >
-      sh -c "envsubst '${SHARED_API_KEY} ${SHARED_ENDPOINT_URL}'
-             < /etc/nginx/conf.d/default.conf.template
-             > /etc/nginx/conf.d/default.conf
-             && exec nginx -g 'daemon off;'"
     volumes:
-      - ./nginx.conf.template:/etc/nginx/conf.d/default.conf.template:ro
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
     networks: [demo-net]
     restart: unless-stopped
+
+networks:
+  demo-net:
+    name: demo-net

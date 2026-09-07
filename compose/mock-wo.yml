@@ -1,11 +1,12 @@
 # compose/mock-wo.yml — standalone file (also the dev-machine smoke target).
 # VERBATIM contract from 03-build-decisions.md. `demo-net` is the auth-shim
 # network (build doc contract) — created by the shim compose in the full
-# lab; this file references it, it does not define it.
+# lab; declared `external` here so this file joins that network rather than
+# owning it. Start the shim first (20-start.sh STEP 1 does).
 services:
   mock-wo:
     image: mock-wo:lab
-    build: ./mock-wo
+    build: ../mock-wo   # relative to THIS file's dir (compose/), not the repo root
     container_name: mock-wo
     ports: ["8090:8090"]
     environment:
@@ -26,3 +27,8 @@ services:
 
 volumes:
   mock-wo-data:            # per-instance learner state; wiped on VM reset
+
+networks:
+  demo-net:
+    name: demo-net
+    external: true   # created by compose/docker-compose.shim.yml (start order 02)
