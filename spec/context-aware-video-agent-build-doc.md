@@ -1,15 +1,17 @@
 # Context-Aware Video AI Agents — Build Document
 
 **Single-VM demo: VSS + Enterprise RAG + NemoClaw**
-Docker Compose · Ubuntu 24.04 · 1× RTX PRO 6000 96 GB · single user, no concurrency
+Docker Compose · Ubuntu 24.04 · 1× H100 ~94 GB (vGPU) · single user, no concurrency
 
 ---
 
 ## 0. Source of truth
-
-This document supersedes the earlier root-level
-`NVIDIA-Service-BP-VSS-RAG-NemoClaw-plan.md` and is the build document
+This document supersedes and absorbs the earlier root-level
+`NVIDIA-Service-BP-VSS-RAG-NemoClaw-plan.md`. The dev-VM findings recorded
+there on 2026-09-07 (H100 vGPU partition, Nemotron 3.5 Lightning shared
+endpoint) were merged in on 2026-09-13. This is the build document
 `spec/01-overview.md` cites as an input.
+
 
 Every command in this document comes from one of the following. Where they disagree
 with each other, this doc says so explicitly rather than picking silently.
@@ -40,7 +42,7 @@ with each other, this doc says so explicitly rather than picking silently.
 | `VSS_AGENT_VERSION` | **3.2.1** | Assumed to track the release tag — **verify the image tag exists on nvcr.io at prep** |
 | RAG repo tag | **v2.6.2** | SHA `f20716d73ae69a544ad4a692f38d6178a64e6f36` (lightweight tag; verified with `git ls-remote`, 2026-09-13) |
 | NemoClaw | **v0.0.118** | The installer at the pinned VSS tag must install or declare it |
-| Elasticsearch | `docker.elastic.co/elasticsearch/elasticsearch:9.3.0` | Shared by VSS and RAG, counted once |
+| Elasticsearch | `docker.elastic.co/elasticsearch/elasticsearch:9.3.0` | **Two independent instances**, same image: VSS's own (`elasticsearch`, host 9200) and RAG's (`rag-elasticsearch`, no host port). Each stack uses its own (2026-09-07 dry run) |
 
 An earlier draft of this document treated v3.2.1 and v2.6.2 as unconfirmed
 because they post-dated the public release list I could see. They are confirmed.
@@ -87,14 +89,15 @@ must be local is local; one shared model serves all three components.
 │    └─ VST / Redis / Kafka / Elastic       └─ 6 local NIMs     │
 │                                                               │
 │  ┌─────────────────────────────────────────────────┐          │
-│  │ RTX PRO 6000 96 GB — 7 local model containers   │          │
+│  │ H100 ~94 GB — 7 local model containers          │          │
 │  └─────────────────────────────────────────────────┘          │
 │                                                               │
 │  auth-shim :8080  (Authorization: Bearer → x-api-key)         │
 └───────────────────────────┬──────────────────────────────────┘
                             ▼
               Shared inference endpoint
-              nemotron-3-nano-omni-30b-a3b-reasoning
+              NVIDIA/Nemotron-3.5-Lightning-30B-A3B
+              (https://model.delllabs.local/api/nemotron35/v1)
 ```
 
 ### Model placement
@@ -108,15 +111,25 @@ must be local is local; one shared model serves all three components.
 | `nemotron-table-structure-v1` | **Local GPU** | RAG — tables |
 | `nemotron-graphic-elements-v1` | **Local GPU** | RAG — charts/diagrams |
 | `nemotron-ocr-v1` | **Local GPU** | RAG — text recognition |
-| `nemotron-3-nano-omni-30b-a3b-reasoning` | **Shared endpoint** | VSS LLM + RAG generation + NemoClaw |
+| `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (served id; contract id below) | **Shared endpoint** | VSS LLM + RAG generation + NemoClaw |
 
 This replaces three separate models: `nemotron-3-super-120b-a12b` (RAG default
 generation), `nemotron-nano-9b-v2` (VSS default LLM), and NemoClaw's default
 provider model.
 
-**The Nano Omni choice is supported, not improvised.** The RAG Blueprint lists
-Nemotron Nano Omni 30B A3B Reasoning among its optional NIMs, and VSS documents
+**The shared model is platform-provisioned (owner correction 2026-09-07).**
+The shared off-VM endpoint `https://model.delllabs.local/api/nemotron35/v1`
+serves the NVFP4 deployment `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4`
+(the owner-confirmed contract id `NVIDIA/Nemotron-3.5-Lightning-30B-A3B`; supersedes the earlier
+Nemotron Nano Omni 30B A3B Reasoning expectation from the RAG Blueprint's
+optional NIM list). VSS documents
 remote OpenAI-compatible endpoints for both LLM and VLM roles.
+
+**2026-09-07 dev-VM correction:** the endpoint actually serves the NVFP4
+build as `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (vLLM behind
+the Kong gateway). Gates and env pins now use the served id (recorded
+reality — prep-log finding); whether the platform adds the confirmed id
+as an alias is open (spec/08).
 
 **VLM identity — confirmed.** The VSS v3.2.1 release ships
 `nvcr.io/nim/nvidia/cosmos3-reasoner:1.7` (Cosmos3 Nano Reasoner) as its local
@@ -153,7 +166,7 @@ actually pulled tags; any mismatch is a finding to surface.
 | vCPU | 32 | 24 |
 | RAM | 256 GB | 192 GB |
 | Disk | 2 TB NVMe | 1.5 TB |
-| GPU | 1× RTX PRO 6000 96 GB, **full PCIe passthrough** | — |
+| GPU | 1× H100 ~94 GB, **vGPU partition** (SKU H100L-94C — learner SKU, platform-confirmed 2026-09-07) | — |
 | `/dev/shm` | 32 GB | 16 GB |
 
 ### Software floors (from the VSS repo)
@@ -186,7 +199,8 @@ actually pulled tags; any mismatch is a finding to surface.
 | Consumer | Approx. |
 |---|---|
 | VSS engine, VST, decode buffers | 128 GB |
-| Elasticsearch (RAG + VSS both use it) | 32 GB |
+| Elasticsearch — VSS instance | 16 GB |
+| Elasticsearch — RAG instance (`rag-elasticsearch`) | 16 GB |
 | RAG ingestion pipeline (CPU-bound extraction) | 24 GB |
 | RAG orchestrator, frontend, Redis, Kafka | 16 GB |
 | NemoClaw sandbox + OpenShell gateway | 6 GB |
@@ -194,6 +208,14 @@ actually pulled tags; any mismatch is a finding to surface.
 | **Total** | **~222 GB** |
 
 192 GB will run. 256 GB means you debug the demo, not the memory.
+
+> **Two Elasticsearch instances, not one.** Earlier drafts counted one
+> Elasticsearch shared by both stacks. The 2026-09-07 dry run showed each stack
+> runs its own: RAG's `vectordb.yaml` collided with VSS's on host port 9200 and
+> on the container name `elasticsearch` (`compose/rag-override-vectordb.yml`).
+> The 32 GB line is split evenly across the two as an estimate. The total is
+> unchanged, but neither instance's heap or resident memory has been measured.
+> Record both at prep.
 
 ### Disk
 
@@ -204,8 +226,8 @@ actually pulled tags; any mismatch is a finding to surface.
 | `$VSS_DATA_DIR` | 700 GB | VST video store, Elastic, Kafka, Redis |
 | RAG model cache | 200 GB | Retriever NIM weights |
 
-Use full PCIe passthrough, not vGPU — NIM probes the device directly for profile
-selection.
+Use the vGPU H100 partition (platform-selected 2026-09-07) — the full ~94 GB must be
+visible to the VM, and NIM profile selection is verified at prep (L5).
 
 ---
 
@@ -222,7 +244,7 @@ Requested Budget = total_vram × gpu_memory_utilization    (default 0.9)
 ```
 
 A vLLM/TRT-LLM-backed NIM **consumes its entire fraction** whether it needs it or
-not. Left at default, the VLM claims ~86 GB and nothing else starts.
+not. Left at default, the VLM claims ~85 GB and nothing else starts.
 
 The six retriever NIMs are Triton/TensorRT-based and allocate what they need
 rather than claiming a budget, so **only the VLM requires explicit fractioning.**
@@ -240,7 +262,7 @@ rather than claiming a budget, so **only the VLM requires explicit fractioning.*
 | ocr | Triton/TRT | default | ~5 GB |
 | CUDA contexts × 7 | — | — | ~4 GB |
 | **Committed** | | | **~70 GB** |
-| **Headroom** | | | **~26 GB** |
+| **Headroom** | | | **~24 GB** |
 
 ### Why these values
 
@@ -291,7 +313,7 @@ sudo apt install -y nvidia-driver-580=580.105.08-*
 sudo reboot
 
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
-# Expect: RTX PRO 6000, ~97871 MiB, 580.105.08
+# Expect: H100 (dev-VM SKU H100L-94C), ~96256 MiB, 580.105.08
 ```
 
 ### 4.2 Docker
@@ -367,7 +389,7 @@ mkdir -p /data/{corpus,video,nim-cache} ~/.cache/nim
 
 ### Exit criteria
 
-- [ ] `nvidia-smi` reports 96 GB, driver 580.105.08
+- [ ] `nvidia-smi` reports ~94 GB, driver 580.105.08
 - [ ] `docker run --gpus all` succeeds
 - [ ] `docker info | grep -i cgroup` shows `cgroupfs`
 - [ ] Docker in [28.3.3, 29.5.0), Compose ≥ 2.39.1, Node ≥ 20
@@ -437,12 +459,12 @@ variables above are substituted automatically.
 docker compose -f docker-compose.shim.yml up -d
 
 curl -s http://localhost:8080/v1/models -H "Authorization: Bearer dummy" | jq '.data[].id'
-# Expect nemotron-3-nano-omni-30b-a3b-reasoning
+# Expect nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 (2026-09-07: served NVFP4 id)
 
 # Streaming check — tokens must arrive incrementally, not as one blob
 curl -N http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" -H "Authorization: Bearer dummy" \
-  -d '{"model":"nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  -d '{"model":"nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
        "messages":[{"role":"user","content":"count to twenty"}],"stream":true}'
 ```
 
@@ -463,7 +485,7 @@ Edit `variables.env` / export before deploying:
 
 ```bash
 # Generation LLM → shared endpoint via the shim
-export APP_LLM_MODELNAME="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+export APP_LLM_MODELNAME="nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4"
 export APP_LLM_SERVERURL="auth-shim:8080"
 
 # Elasticsearch is the blueprint default — keep it.
@@ -562,7 +584,7 @@ VSS deployment is `.env`-driven. Edit the LVS profile file — per the Jul 2026 
 # Deployment selection
 MODE=2d
 BP_PROFILE=bp_developer_lvs
-HARDWARE_PROFILE=RTXPRO6000BW
+HARDWARE_PROFILE=H100
 
 # LLM / VLM placement
 # Blog default is local_shared for both. We want the LLM remote.
@@ -618,7 +640,7 @@ The helper script does the same and creates the data directories for you:
 ```bash
 ./deploy/docker/scripts/dev-profile.sh up \
   --profile lvs \
-  --hardware-profile RTXPRO6000BW \
+  --hardware-profile H100 \
   --vlm-env-file /path/to/vlm.env
 ```
 
@@ -637,11 +659,11 @@ curl -f  http://127.0.0.1:38111/v1/ready           # LVS backend
 curl -f  http://127.0.0.1:8018/v1/health/ready     # RT-VLM
 # LLM NIM :30081 should NOT be running — the LLM is remote
 
-# Fraction respected? Expect ~38 GB, not ~86 GB
+# Fraction respected? Expect ~38 GB, not ~85 GB
 nvidia-smi --query-gpu=memory.used --format=csv
 ```
 
-If VRAM shows ~86 GB the env file was not applied:
+If VRAM shows ~85 GB the env file was not applied:
 
 ```bash
 docker inspect <rt-vlm-container> | jq '.[0].Config.Env'
@@ -671,7 +693,7 @@ curl --retry 90 --retry-delay 10 --retry-all-errors -sf \
 cd /data/rag && docker compose ... up -d
 ```
 
-Steady state: **~70 GB used, ~26 GB free, 7 compute processes.**
+Steady state: **~70 GB used, ~24 GB free, 7 compute processes.**
 
 ```bash
 watch -n2 nvidia-smi
@@ -765,8 +787,9 @@ openshell inference set --provider <provider> --model <model-id>
 ```
 
 > The `nvidia-nim` provider's registered model table lists
-> `nvidia/nemotron-3-nano-30b-a3b` — the text-only Nano 30B, **not** the Omni
-> variant. That's why we use `NEMOCLAW_PROVIDER=custom` and name the model
+> `nvidia/nemotron-3-nano-30b-a3b` — the text-only Nano 30B, **not** the
+> shared lab model (the NVFP4 deployment `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` via the shim).
+> That's why we use `NEMOCLAW_PROVIDER=custom` and name the model
 > ourselves through the shim.
 
 ### 9.4 End-to-end test
@@ -787,7 +810,7 @@ LVS with RAG context and produces the report.
 
 ### Exit criteria
 
-- [ ] `openclaw nemoclaw status` shows the shared endpoint and Nano Omni
+- [ ] host `nemoclaw demo status` shows `Provider: compatible-endpoint` + model `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (and the sandbox-side box via `nemoclaw demo exec -- openclaw nemoclaw status` shows the same model + `NemoClaw registered`)
 - [ ] HITL prompts appear and collect all four parameters
 - [ ] Report generated with timestamps, citations and recommended actions
 - [ ] Report cites RAG-sourced documents, not just video content
@@ -885,7 +908,7 @@ openclaw nemoclaw status --json 2>/dev/null | jq -r '.model // "unavailable"'
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| VLM claims ~86 GB | `--vlm-env-file` not applied | `docker inspect` the env; check path resolution |
+| VLM claims ~85 GB | `--vlm-env-file` not applied | `docker inspect` the env; check path resolution |
 | Second NIM OOMs at startup | Wrong start order | Full stop; restart per order above |
 | `ValueError: To serve at least one request…` | Fraction too low for `max-model-len` | Raise fraction or lower context |
 | Elasticsearch exits immediately | `vm.max_map_count` unset | Re-apply `/etc/sysctl.d/99-vss.conf` |
@@ -912,6 +935,7 @@ re-deployment after the first run takes minutes, not an hour.
 | Confirm the correct `LLM_MODE` value for remote LLM | Phase 3 |
 | Does the 0.10 `gpu_memory_utilization` floor apply to user values? | Phase 2 |
 | Record actual per-NIM VRAM; revise if > 45 GB | Phase 2 |
+| Measure resident memory of both Elasticsearch instances (VSS and `rag-elasticsearch`); revise the RAM table if either exceeds 16 GB | Phase 4 |
 | ~~Full 40-char SHA for the RAG v2.6.2 tag~~ — resolved in §0: `f20716d73ae69a544ad4a692f38d6178a64e6f36` | Closed |
 | ~~Confirm which VLM your version ships as default~~ — resolved in §1: `cosmos3-reasoner:1.7` | Closed |
 | ~~Select vertical and assemble corpus~~ — manufacturing (motor drive); corpus in `fixtures/corpus/` | Closed |
@@ -922,7 +946,7 @@ re-deployment after the first run takes minutes, not an hour.
 ## 15. Future work
 
 **Zero local GPU for VSS.** VSS supports remote VLMs over any OpenAI-compatible
-endpoint. If the shared Nano Omni endpoint can serve the VLM role, the LVS profile
+endpoint. If the shared Nemotron-3.5-Lightning endpoint can serve the VLM role, the LVS profile
 with remote LLM *and* VLM needs no local GPU, leaving only the RAG retriever stack
 on the card. Unverified — only the default VLM is verified for local deployment,
 and LVS prompts are tuned around it. Treat as a phase-2 experiment.

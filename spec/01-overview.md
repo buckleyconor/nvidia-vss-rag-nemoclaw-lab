@@ -1,7 +1,7 @@
 # 01 — Overview
 
 **Lab:** `nvidia-service-bp-vss-rag-nemoclaw` — "NVIDIA Service Blueprint: VSS + RAG + NemoClaw"
-**Inputs:** `concept.md` (approved) + `sizing.md` (approved) + the project build document (`spec/context-aware-video-agent-build-doc.md`, which superseded the root-level `NVIDIA-Service-BP-VSS-RAG-NemoClaw-plan.md` on 2026-09-13). Every vendor fact in this spec traces to those three; no company/product research profile was loaded, and no vendor claim goes beyond the build document.
+**Inputs:** `concept.md` (approved) + `sizing.md` (approved) + the project build document (`spec/context-aware-video-agent-build-doc.md`; the root-level `NVIDIA-Service-BP-VSS-RAG-NemoClaw-plan.md`, including its 2026-09-07 dev-VM findings, was merged into it on 2026-09-13). Every vendor fact in this spec traces to those three; no company/product research profile was loaded, and no vendor claim goes beyond the build document.
 
 **Version pins (2026-09-02):** VSS repo tag **v3.2.1** (agent image `VSS_AGENT_VERSION=3.2.1` — tracks the release tag; image-tag existence verified at prep → `prep-log.md`), RAG **v2.6.2**, NemoClaw **v0.0.118** (the sizing carried no version). The user's GitHub release data (2026-09-02) supersedes the initial spec-review confirmations (VSS v3.2.0, RAG v2.6.0 with v2.6.2 fallback) and the sizing's open-tag rows; the full version inventory (six NIM image tags, Elasticsearch 9.3.0, VLM `nvcr.io/nim/nvidia/cosmos3-reasoner:1.7`, VSS infra images, host-tool bounds) is recorded with provenance in §8 (items 1, 2, 3, 4, 7, 28, 29, 30). `sizing.md` is upstream and unedited.
 

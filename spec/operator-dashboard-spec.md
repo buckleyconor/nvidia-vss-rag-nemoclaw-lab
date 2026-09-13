@@ -34,7 +34,14 @@ A review against the repo raised eight design questions. These are now decided:
 | D5 | Per-pack collection vs a baked `KNOWLEDGE_COLLECTION` | **Pack activation restarts vss-agent only**, never RT-VLM | §4a, §5.1 |
 | D6 | React/Vite reverses `spec/03` | **Accepted** — vendored, multi-stage build; `spec/03` to be amended | §2, §10 |
 | D7 | Which packs are in this build? | **Manufacturing only.** Other packs are future work | §11, §12 |
-| D8 | Build doc vs the root plan file | `context-aware-video-agent-build-doc.md` **supersedes** it | `spec/01` |
+| D8 | Build doc vs the root plan file | Merged into `context-aware-video-agent-build-doc.md`; root file removed | `spec/01` |
+
+**Platform alignment (2026-09-13).** This spec now follows the dev-VM findings
+from 2026-09-07. The GPU is an **H100 ~94 GB vGPU partition** (SKU H100L-94C).
+The shared model is **Nemotron 3.5 Lightning 30B-A3B**. The endpoint serves it as
+`nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (contract id
+`NVIDIA/Nemotron-3.5-Lightning-30B-A3B`). The earlier references to an RTX PRO
+6000 and Nano Omni are gone.
 
 ### On giving up the autonomous aha
 
@@ -152,11 +159,11 @@ rather than script-follows" from a claim into something visible.
 
 ```
                  shared off-VM endpoint (pre-provisioned)
-                 nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+                 nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
                                 ▲ x-api-key
                                 │
 ┌───────────────────────────────┴────────────────────────────────────┐
-│ vCD VM — Ubuntu 24.04 · 32 vCPU · 256 GB · 2 TB · RTX PRO 6000 96GB │
+│ vCD VM — Ubuntu 24.04 · 32 vCPU · 256 GB · 2 TB · H100 ~94GB vGPU   │
 │                                                                     │
 │  Browser ──► mock-wo :8091   OPERATOR PORT      ← ADR-V08           │
 │              ├─ React SPA (bundled, served static)                  │
@@ -182,7 +189,7 @@ rather than script-follows" from a claim into something visible.
 │  VSS agent :8000 ──frag──► mock-wo ragproxy ──► RAG :8081/v1        │
 │   ├─ LVS :38111                       (host 8071 — ADR-V06)         │
 │   ├─ RT-VLM :8018 ◄─ cosmos3-reasoner:1.7       └─ 6 NIMs (GPU)     │
-│   └─ VST / Redis / Kafka / Elasticsearch 9.3.0 (shared)             │
+│   └─ VST / Redis / Kafka / Elasticsearch 9.3.0 (VSS's own)          │
 │                                                                     │
 │  auth-shim :8080 (nginx:1.27-alpine)                                │
 └─────────────────────────────────────────────────────────────────────┘
@@ -262,8 +269,8 @@ available that reasoning is happening. Beat 5 gains real force: the second
 anomaly produces a different *skill sequence*, not merely a different verdict.
 
 Practically, skills are **Early Access, explicitly not for production, and
-validated against Claude Opus 4.6**. The shared endpoint serves Nano Omni
-30B-A3B — 3 B active parameters. Tool selection across sixteen candidates is
+validated against Claude Opus 4.6**. The shared endpoint serves Nemotron 3.5
+Lightning 30B-A3B — 3 B active parameters. Tool selection across sixteen candidates is
 exactly where a small MoE picks a plausible neighbour instead of the right
 tool. A narrow catalog raises selection accuracy, keeps the skill trace
 readable, and gives a better answer to a security-minded audience than
@@ -271,7 +278,7 @@ readable, and gives a better answer to a security-minded audience than
 
 *Consequence.* Each pack declares a skill roster (§5.1). Skills are symlinked
 from the cloned VSS checkout and picked up without an agent restart, so a pack
-switch can swap the installed set. Skill-selection accuracy against Nano Omni
+switch can swap the installed set. Skill-selection accuracy against Nemotron 3.5 Lightning
 must be measured before the storyline depends on it (**O11**).
 
 *Footprint unverified — D4, **O17**.* `vss-search-archive` (fusion search over
@@ -319,23 +326,45 @@ curl them; nothing in the running system needs them published.
 
 #### Port allocation
 
-| Service | Container port | Host publish | Reachable by |
-|---|---|---|---|
-| auth-shim | 8080 | 8080 | VSS, RAG, NemoClaw, operator |
-| mock-wo agent port (agent API + telemetry + ragproxy) | 8090 | 8090 | NemoClaw, VSS |
-| mock-wo operator port (SPA + operator API + SSE) | 8091 | 8091 | operator browser only — **never** in the NemoClaw policy (ADR-V08) |
-| VSS agent | 8000 | 8000 | NemoClaw, operator |
-| LVS backend | 38111 | 38111 | start gate, operator |
-| RT-VLM | 8018 | 8018 | start gate, operator |
-| **RAG server** | **8081** | **8071** | **mock-wo ragproxy only** |
-| **RAG ingestor** | **8082** | **8072** | **prep only** |
-| LLM NIM | 30081 | — | must not be running |
+"Host today" is the state after the 2026-09-07 dry-run fixes (`2dc036a`).
+"Host target" is what this spec builds.
 
-**Container ports are unchanged.** Only the host mapping moves, so nothing
-inside either blueprint is patched. The remap is a compose override file carried
-in this repo and passed with a second `-f`, not an edit to the vendor compose
-file. Container-to-container traffic keeps using `rag-server:8081` on
-`demo-net`, which is what the ragproxy upstream points at.
+| Service | Container port | Host today | Host target | Reachable by |
+|---|---|---|---|---|
+| auth-shim | 8080 | 8080 | 8080 | VSS, RAG, NemoClaw, operator |
+| mock-wo — agent port (agent API, telemetry, ragproxy) | 8090 | 8090 | 8090 | NemoClaw, VSS |
+| mock-wo — operator port (SPA, operator API, SSE) | 8091 | — (not built) | **8091** | operator browser only — **never** in the NemoClaw policy (ADR-V08) |
+| VSS agent | 8000 | 8000 | 8000 | NemoClaw, operator |
+| LVS backend | 38111 | 38111 | 38111 | start gate, operator |
+| RT-VLM | 8018 | 8018 | 8018 | start gate, operator |
+| VSS Elasticsearch | 9200 | 9200 | 9200 | VSS stack |
+| VSS Redis | 6379 | 6379 | 6379 | VSS stack |
+| VSS Kibana | 5601 | 5601 | 5601 | VSS UI dashboard (via haproxy), `health-watch.sh` gate |
+| **RAG server** | 8081 | 8081 | **8071** | mock-wo ragproxy (by container name), prep checks |
+| **RAG ingestor** | 8082 | 8082 | **8072** | prep only |
+| RAG Elasticsearch (`rag-elasticsearch`) | 9200 | none — `rag-override-vectordb.yml` | none | rag-server, by service name on `nvidia-rag` |
+| RAG ingestor Redis | 6379 | none — `rag-override-ingestor.yml` | none | ingestor-server, by service name |
+| RAG page-elements NIM | 8000–8002 | none — `rag-override-nims.yml` | none | rag-server, by container name |
+| RAG frontend | 3000 | none — `rag-override-rag-server.yml` (was host 8090, mock-wo's port) | none | not used by the lab |
+| LLM NIM | 30081 | — | — | must not be running |
+
+**Container ports are unchanged.** Only host mappings move, so nothing inside
+either blueprint is patched. The lab already uses this pattern:
+`compose/rag-override-*.yml`, passed with a second `-f`, dropped four host
+bindings that collided with the VSS stack and mock-wo (8000, 9200, 6379,
+8090). The 8071/8072 remap goes in the same files. The one-service-per-base-file
+rule allows it, because `rag-server` and `ingestor-server` live in the base
+files those overrides already target.
+
+**Any new host port is checked against this table first.** All four collisions
+above were found only by a dry run. Nothing in the table publishes 8091, but
+VSS's full compose isn't recorded here, so prep asserts 8091 is free before
+starting mock-wo.
+
+**RAG's internal network is `nvidia-rag`, not `demo-net`.** The ragproxy
+upstream `http://rag-server:8081/v1` only resolves if mock-wo joins `nvidia-rag`
+as well as `demo-net`. The alternative is the host path (`host.docker.internal:8071`, with `extra_hosts: host.docker.internal:host-gateway`).
+Either way it is part of O22.
 
 If host access is not wanted at all, drop the `ports:` mapping for both
 services entirely; the ragproxy still works. Publishing them on 8071/8072 is
@@ -345,9 +374,12 @@ the friendlier default for prep and debugging.
 
 | Where | Change |
 |---|---|
-| RAG compose `ports:` (override file in this repo) | `8081:8081` → `8071:8081`, `8082:8082` → `8072:8082` |
-| `scripts/prep/30-verify-stack.sh` | host health checks → `localhost:8071/v1/health` |
-| `scripts/prep/25-ingest-corpus.sh` | ingest → `localhost:8072/v1/documents` |
+| `compose/rag-override-rag-server.yml` | add `rag-server: ports: !override ["8071:8081"]` |
+| `compose/rag-override-ingestor.yml` | add `ingestor-server: ports: !override ["8072:8082"]` |
+| `scripts/prep/20-start.sh` | STEP 4 gates → `127.0.0.1:8071` / `:8072`; pre-start check that 8091 is free |
+| `scripts/prep/30-verify-stack.sh` | host health checks → `127.0.0.1:8071/v1/health`, `:8072/v1/health` |
+| `scripts/prep/25-ingest-corpus.sh` | `INGESTOR_URL` → `http://127.0.0.1:8072` |
+| `compose/mock-wo.yml` | publish 8091; join `nvidia-rag` (external) for the ragproxy upstream (O22) |
 | `lab-prep.md`, `guide.md` | verification steps |
 | `spec/02-architecture.md` | endpoint contract table |
 | mock-wo ragproxy upstream | **no change** — `http://rag-server:8081/v1` |
@@ -362,7 +394,7 @@ a prep check.
 
 ### ADR-V07 — The shared model is one variable, swappable without a rebuild
 
-**Resolves O11 as a build decision:** build on Nano Omni, measure skill
+**Resolves O11 as a build decision:** build on Nemotron 3.5 Lightning, measure skill
 selection, swap the model if the numbers justify it (§12, M4a).
 
 For that to be a cheap decision later, it has to be designed in now.
@@ -481,8 +513,8 @@ in the contract, not in someone's memory.
 `config/shared-llm.env` — the only place a model identifier appears.
 
 ```bash
-SHARED_LLM_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
-SHARED_LLM_ENDPOINT=https://<upstream-host>/v1
+SHARED_LLM_MODEL=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4   # served id (2026-09-07)
+SHARED_LLM_ENDPOINT=https://model.delllabs.local/api/nemotron35/v1
 SHARED_LLM_API_KEY=<x-api-key value>
 ```
 
@@ -529,7 +561,7 @@ Gate: `/v1/generate` returns; the shim access log shows the new model.
 
 Gate: agent `/health` returns. **Confirm RT-VLM was not restarted** —
 `docker inspect -f '{{.State.StartedAt}}'` on the RT-VLM container must be
-unchanged, and `nvidia-smi` must still show ~38 GB held by the same PID. This
+unchanged, and `nvidia-smi` must still show the same VRAM (~34 GB measured, `spec/09`) held by the same PID. This
 check is the enforcement of the one rule above; without it the rule is a
 comment.
 
@@ -1322,7 +1354,7 @@ roster against the GPU budget. Then install the roster and build
 `scripts/ops/repoint-llm.sh`, `activate-pack.sh` and `doctor.sh` to the §4a contract at
 the same time — including the RT-VLM-not-restarted assertion, which is the part
 that stops being true if nobody tests it. Resolves **O16**. Then measure selection
-accuracy against Nano Omni across twenty scripted situations.
+accuracy against Nemotron 3.5 Lightning across twenty scripted situations.
 
 This is a **measurement, not a gate** — build proceeds regardless. Its purpose
 is to produce a number, so that if the trace looks unreliable at M5 or in front
@@ -1379,7 +1411,7 @@ test of pack agnosticism: if it requires touching anything outside `packs/`
 | **O8** | ~~Light vs dark palette~~ **Resolved** — dark, continuous with the Sentinel theme (§10). Align token hexes with the Sentinel stylesheet | Closed |
 | **O9** | ~~Prior-occurrence history: seeded or real?~~ **Resolved** — archive search (§5.1), verified at M5a | Closed |
 | **O10** | ~~Build doc Docker floors~~ **Closed** — the build doc and `00-host-prep.sh` already carry ≥ 28.3.3, < 29.5.0, Compose ≥ 2.39.1 | Closed |
-| **O11** | ~~Skill-selection accuracy gates the build~~ **Resolved** — build on Nano Omni, measure at M4a, swap later if needed. ADR-V07 makes the swap a config change | Closed, measure at M4a |
+| **O11** | ~~Skill-selection accuracy gates the build~~ **Resolved** — build on Nemotron 3.5 Lightning, measure at M4a, swap later if needed. ADR-V07 makes the swap a config change | Closed, measure at M4a |
 | **O12** | `VSS_PUBLIC_HTTP_PROTOCOL`, `VSS_PUBLIC_HOST`, `VSS_PUBLIC_PORT` must be set or clip-URL skills fail rather than emitting malformed URLs | Before M6 |
 | **O13** | Does `vss-manage-alerts` in CV-verification mode fire reliably on pack clips, or is scripted injection still needed as a fallback? | Before M7 |
 | **O14** | Skill roster swapping on pack switch — symlink churn without an agent restart is documented, but untested here. Pack switch restarts vss-agent anyway (§4a), but not the NemoClaw sandbox | Future pack |
@@ -1390,7 +1422,7 @@ test of pack agnosticism: if it requires touching anything outside `packs/`
 | **O19** | Source of "estimated time to failure" for impact (§8.7): agent-derived from the corpus, pack-declared, or both labelled | Before M6 |
 | **O20** | Partial line-item approval: one work order with the approved subset, one work order per item, or something else? | Before M4 |
 | **O21** | On deny, is the agent told (and does anything about its next run change), or does the incident simply close? | Before M4 |
-| **O22** | ragproxy reachability: the VSS agent container must resolve `mock-wo` on `demo-net`. Confirm the VSS stack joins it, or use the host path | Before M3 |
+| **O22** | ragproxy reachability, both hops: the VSS agent container must resolve `mock-wo` (confirm the VSS stack joins `demo-net`), and mock-wo must resolve `rag-server` (join `nvidia-rag`, or use the host path) | Before M3 |
 | **O23** | Module 1 `vss-deploy-profile`: prep pre-starts the stack under start-order discipline, so the learner cannot redeploy. What does the deployment-side bookend become? | Before M9 |
 | **O24** | OpenClaw plugin hook points at NemoClaw v0.0.118: tool-call before/after, skill selection, token streaming. ADR-V09 depends on them | **Start of M5** |
 
