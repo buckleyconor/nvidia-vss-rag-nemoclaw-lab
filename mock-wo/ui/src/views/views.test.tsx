@@ -83,6 +83,8 @@ describe('FleetView (§7.2)', () => {
     render(withStream(<FleetView />))
     expect(await screen.findByText('All assets nominal. Inject a fault to begin.')).toBeInTheDocument()
     expect(screen.getByTestId('tile-M-3021')).toHaveTextContent('Normal')
+    // The health dot mirrors the band label: nominal assets show green.
+    expect(screen.getByTestId('tile-M-3021')).toContainElement(document.querySelector('.dot-normal')!)
     await userEvent.click(screen.getByText('Inject fault'))
     await userEvent.click(screen.getByRole('button', { name: /M3021-BEARING-THERMAL/ }))
     await waitFor(() => expect(window.location.pathname).toBe('/incidents/inc-1'))

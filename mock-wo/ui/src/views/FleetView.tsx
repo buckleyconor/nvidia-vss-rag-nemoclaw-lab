@@ -126,6 +126,7 @@ export function FleetView() {
               <div className="muted small">{asset.location}</div>
             </div>
             <div className={`status-band status-${asset.status}`}>
+              <span className={`health-dot dot-${asset.status}`} aria-hidden title={STATUS_LABEL[asset.status]} />
               <span>{STATUS_LABEL[asset.status]}</span>
               {asset.incident && asset.status !== 'normal' && (
                 <Link href={`/incidents/${asset.incident}`} className="small">

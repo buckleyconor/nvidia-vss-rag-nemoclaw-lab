@@ -64,9 +64,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .app-header nav { display: flex; gap: 16px; flex: 1; }
 .app-header nav a { color: var(--ink-muted); text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; }
 .app-header nav a.active { color: var(--ink); border-bottom-color: var(--ink-muted); }
-.live { font-size: 12px; color: var(--ink-muted); }
-.live::before { content: '○ '; }
-.live-on::before { content: '● '; }
+/* Connection badge: green dot = live stream, amber dot (pulsing) = the
+   browser is reconnecting its SSE stream. Colour only — the text label
+   carries the state for screen readers. */
+.live { font-size: 12px; color: var(--ink-muted); white-space: nowrap; }
+.live::before { content: '●'; margin-right: 6px; }
+.live-on::before { color: var(--state-normal); }
+.live:not(.live-on)::before { color: var(--state-warn); animation: live-pulse 1.6s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .live:not(.live-on)::before { animation: none; } }
 .app-footer { padding: 12px 20px; color: var(--ink-muted); font-size: 12px; border-top: 1px solid var(--line); }
 main { min-height: calc(100vh - 100px); }
 
@@ -104,7 +110,14 @@ button.chip { cursor: pointer; }
 .tile-thumb { grid-row: 1; display: grid; place-items: center; background: var(--surface-sunk); color: var(--ink-muted); font-family: var(--mono); font-size: 20px; }
 .tile-body { padding: 10px 12px; }
 .tile-name { font-weight: 500; }
-.status-band { grid-column: 1 / -1; display: flex; justify-content: space-between; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-muted); }
+.status-band { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-muted); }
+/* Fleet health dot: green = nominal, amber = an event occurred (action
+taken), red = active fault / down. Paired with the text label, so the dot
+itself is decorative. */
+.health-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; }
+.dot-normal { background: var(--state-normal); }
+.dot-attention { background: var(--state-warn); }
+.dot-alarm { background: var(--state-alarm); }
 .status-band.status-alarm { background: color-mix(in srgb, var(--state-alarm) 18%, var(--surface)); color: var(--ink); border-top-color: var(--state-alarm); }
 .status-band.status-attention { background: color-mix(in srgb, var(--state-warn) 14%, var(--surface)); color: var(--ink); border-top-color: var(--state-warn); }
 .tile-alarm { border-color: var(--state-alarm); }
