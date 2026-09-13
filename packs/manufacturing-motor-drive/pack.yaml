@@ -1,0 +1,112 @@
+# packs/manufacturing-motor-drive/pack.yaml — pack one (operator-dashboard-spec
+# §5.1, §11). Content, not code: adding a vertical is a new directory here.
+#
+# Clips and corpus still live in fixtures/ (provisional, ADR-004). The physical
+# move into this pack's clips/ and corpus/ is deferred to the guide rewrite
+# (M9) so the current prep and demo scripts, which read fixtures/, keep
+# working until then. In the container, packs/ mounts at /packs and fixtures/
+# at /fixtures, so the relative paths below resolve the same way.
+pack_id: manufacturing-motor-drive
+display_name: Manufacturing — Motor Drive
+asset_class: Line motor drives
+scenario: A drive-end bearing on Line 3 runs hot and noisy between scheduled checks.
+knowledge_collection: demo_corpus      # becomes vss-agent KNOWLEDGE_COLLECTION — §4a pack switch
+clips_dir: ../../fixtures/video
+corpus_dir: ../../fixtures/corpus
+
+fleet:
+  - asset_id: M-3021
+    display_name: Motor drive M-3021
+    make_model: ABB M3BP 200
+    commissioned: 2019-04
+    location: Line 3, Hall B
+    baseline_clips: [clip-normal-01.mp4, clip-normal-02.mp4]
+    service_history:
+      - date: 2025-07-14
+        summary: Bearing inspected, within tolerance
+        technician: J. Moore
+      - date: 2026-08-28
+        summary: Bearing housing 71 °C at shift start; inspection recommended
+        technician: Shift lead
+  - asset_id: M-3022
+    display_name: Motor drive M-3022
+    make_model: ABB M3BP 200
+    commissioned: 2019-04
+    location: Line 3, Hall B
+    service_history:
+      - date: 2026-06-02
+        summary: PM-07 check, within tolerance
+        technician: J. Moore
+  - asset_id: M-3023
+    display_name: Motor drive M-3023
+    make_model: ABB M3BP 160
+    commissioned: 2021-11
+    location: Line 3, Hall B
+  - asset_id: C-3101
+    display_name: Conveyor drive C-3101
+    make_model: SEW-Eurodrive K67
+    commissioned: 2020-02
+    location: Line 3, Hall B
+  - asset_id: P-3201
+    display_name: Coolant pump P-3201
+    make_model: Grundfos CR 32
+    commissioned: 2018-09
+    location: Line 3, Plant room
+  - asset_id: F-3301
+    display_name: Extraction fan F-3301
+    make_model: Ziehl-Abegg ZN080
+    commissioned: 2022-05
+    location: Hall B roof
+
+incidents:
+  - incident_id: M3021-BEARING-THERMAL
+    asset_id: M-3021
+    title: Drive-end bearing thermal and vibration anomaly
+    clip: clip-anomaly-01.mp4
+    outcome_class: work_order            # or monitoring_note
+    downtime_cost_per_hour: 4200
+    callout_cost: 850
+    currency: EUR
+    ambiguous: false                     # authoring/test expectation only — never sent to the agent
+    expected_analysis_seconds: 240       # §9 honest-ETA fallback when VSS exposes no chunk progress (O4)
+    # Precedent is FOUND, not declared — vss-search-archive, which needs the
+    # VSS search profile and does not fit beside LVS (O17). Seed clips stay
+    # unset until that decision is made; none exist yet (O18).
+    archive_seed_clips: []
+  # O18: the pack's monitoring_note incident and its ambiguous incident need
+  # clips that do not exist yet. Add them here when they are produced.
+
+parts:
+  - part_number: 6312-2RS
+    description: Deep-groove bearing, drive end
+    on_hand_local: 0
+    on_hand_regional: 2
+    regional_site: Regional DC Cork
+    regional_transit_days: 1
+    oem_lead_days: 6
+  - part_number: CR-45x62x8
+    description: Shaft seal, drive end
+    on_hand_local: 4
+    on_hand_regional: 10
+    regional_site: Regional DC Cork
+    regional_transit_days: 1
+    oem_lead_days: 3
+  - part_number: LGHP-2
+    description: High-performance bearing grease, 420 ml
+    on_hand_local: 12
+    on_hand_regional: 40
+    regional_site: Regional DC Cork
+    regional_transit_days: 1
+    oem_lead_days: 2
+
+# ADR-V05 — installed skill roster. The three below fit the LVS deployment
+# (checked against VSS v3.2.1, 2026-09-13 — ADR-V05 table). The other three
+# need VSS profiles that cannot run beside LVS (O17); reinstate them here if
+# the platform decision goes that way.
+skills:
+  - vss-generate-video-report-rag
+  - vss-ask-video
+  - vss-manage-video-io-storage
+  # - vss-manage-alerts        # alerts profile — O17
+  # - vss-search-archive       # search profile — O17
+  # - vss-query-analytics      # alerts profile (VA-MCP :9901) — O17

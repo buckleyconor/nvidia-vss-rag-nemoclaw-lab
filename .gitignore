@@ -23,3 +23,8 @@ coverage.xml
 *.db
 *.db-wal
 *.db-shm
+
+# operator dashboard UI: dependencies and the built bundle (the Dockerfile
+# builds it; `npm run build` in mock-wo/ui writes it for local runs)
+mock-wo/ui/node_modules/
+mock-wo/app/ui_dist/

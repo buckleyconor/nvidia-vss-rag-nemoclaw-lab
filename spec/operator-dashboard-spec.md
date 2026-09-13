@@ -281,17 +281,39 @@ from the cloned VSS checkout and picked up without an agent restart, so a pack
 switch can swap the installed set. Skill-selection accuracy against Nemotron 3.5 Lightning
 must be measured before the storyline depends on it (**O11**).
 
-*Footprint unverified — D4, **O17**.* `vss-search-archive` (fusion search over
-Cosmos Embed1 embeddings plus CV attribute matching), `vss-query-analytics`, and
-`vss-manage-alerts` in CV-verification mode plausibly depend on VSS services the
-LVS profile does not deploy — the video-embedding, detection/tracking and
-video-analytics-API services whose *deploy* skills are excluded just below.
-Nothing of the sort is in the ~70 GB budget (build doc §3) or `spec/09`.
+*Footprint checked 2026-09-13 — D4, **O17**.* Checked against the VSS v3.2.1
+checkout (SHA `7640d917…`, matching the build doc pin): each roster skill's
+`SKILL.md`, plus the `vss-deploy-profile` profile references.
 
-Before M4a, check each roster skill against the v3.2.1 catalog for the services
-and GPU it needs. If a skill needs something outside the budget, the choice at
-that point is to drop the skill or re-size — not to discover it at M5a. The
-roster below is provisional until that check runs.
+| Skill | Requires | Fits the LVS deployment? |
+|---|---|---|
+| `vss-generate-video-report-rag` | LVS profile + `config_rag.yml` | **Yes** |
+| `vss-ask-video` | `video_understanding` tool — `base` or `lvs` profile | **Yes** |
+| `vss-manage-video-io-storage` | VIOS (VST ingress :30888) — included in base, lvs, search, alerts | **Yes** |
+| `vss-search-archive` | **search** profile: `rtvi-cv` (DeepStream) + `rtvi-embed` (Cosmos Embed1, :8017) + LLM; default layout spans 3 GPUs | **No** |
+| `vss-manage-alerts` | **alerts** profile, `verification` (RT-CV, Grounding DINO) or `real-time` (RT-VLM) mode; default layout 2 GPUs | **No** |
+| `vss-query-analytics` | VA-MCP :9901, served by the **alerts** profile | **No** |
+
+**VSS profiles are mutually exclusive on a host.** Every profile sets
+`COMPOSE_PROJECT_NAME=mdx`, and `vss-deploy-profile`'s teardown reference
+requires tearing down the running profile before deploying another. The three
+"No" skills cannot sit beside LVS on this VM without a custom composition of
+VSS services. That is a fork in all but name, and outside this spec's
+no-patching rule.
+
+**Consequences, pending a decision (D4 follow-up):**
+
+- **Precedent beat (§5.1, M5a)** has no archive search. The options are to drop
+  it, fall back to declared history (the approach §5.1 rejected), or re-size
+  onto a multi-GPU VM.
+- **Detect (§3)** cannot use `vss-manage-alerts`. Detection is the inject path
+  (§7.2), which O13 already names as the fallback.
+- **Gather (§3)** loses `vss-query-analytics`; nothing in the storyline
+  depends on it.
+
+The working roster for this build is the three "Yes" skills. The pack manifest
+lists the other three commented out with this reference, so reinstating them
+is a one-line change if the platform decision goes that way.
 
 **Skills deliberately excluded:** `vss-deploy-detection-tracking-2d` / `-3d`,
 `vss-generate-video-calibration`, `vss-setup-behavior-analytics`,
@@ -1330,25 +1352,62 @@ question.
 
 Sequenced so the riskiest and highest-value work is proven first.
 
-**M1 — Data model and state machine.** Incident, Evidence, Proposal, Decision
+### Where each milestone runs
+
+Two environments, and the split matters for planning:
+
+- **Dev machine**: the aarch64 workstation. No GPU; no VSS, RAG or NemoClaw.
+  It can run pytest, vitest, the Vite build, `docker compose config` and the
+  mock-wo container smoke. Anything whose dependency is a VSS, RAG or OpenClaw
+  *API* is built here against a stub of that API.
+- **GPU VM**: the live lab VM (H100 ~94 GB vGPU) with the full stack up:
+  VSS LVS profile, RAG, NemoClaw sandbox, shared Lightning endpoint. Anything
+  that depends on real model behaviour, real network policy, real GPU
+  allocation or real footage is **only proven here**.
+
+| Milestone | Build and test on dev machine | Needs the live GPU VM |
+|---|---|---|
+| **M1** Data model, state machine | **All** | — |
+| **M2** Evidence linking | **All** (fixture evidence) | Visual check with evidence timestamps from a real VSS run |
+| **M3** ragproxy | Proxy, streaming passthrough, events (fake upstream) | Real frag traffic through the proxy; `/v1` suffix; both network hops (O22) |
+| **M4** Approval gate | **All**, including port-isolation tests | Sandbox cannot reach :8091 under the real NemoClaw policy; `40-nemoclaw.sh` policy assertion |
+| **M4a** Skills, repoint, pack switch, bench | Scripts written and shellchecked | **Everything that proves them:** skill install, RT-VLM-not-restarted assertion, `openshell inference set` (O16), selection bench against Lightning |
+| **M5** Telemetry plugin, activity stream | Plugin forwarder + unit tests; server-side mapping to `skill.*` / `agent.token`; stream UI against recorded events | Hooks firing in the sandbox (O24); VSS caption/progress streaming (O4); a real incident end to end |
+| **M5a** Archive search | — | **All**, and blocked on the O17 decision |
+| **M6** Proposal, parts, impact panels | Panels against stub proposals; parts/cost routes | Inventory-changes-the-recommendation test (real agent); clip extraction via `vss-manage-video-io-storage` |
+| **M6a** Ask the footage | Route, UI, evidence/audit recording against a stubbed VSS client | Real `video_understanding` answers; the pack's ask-video questions tried against the clip |
+| **M7** Fleet view, vertical selector | Screens, inject/reset routes with stubbed VSS submission and wake hook | Clip submitted to VSS; OpenClaw wake hook and hook-relay (O2) |
+| **M8** Audit trail | **All** | — |
+| **M9** Guide and module rewrite | Drafting | Walkthrough on the live stack; screenshots; timings |
+| **Pack content** (§11 checklist) | Manifest structure tests | Clip qualification against the VLM, ask-video questions, corpus ingestion. Archive seed clips only if O17 goes that way |
+
+A milestone that is "All" on the dev machine is done when its tests pass there.
+Any other milestone reaches **dev-complete** on the dev machine and **done** only
+after its right-hand column has been checked on the VM.
+
+Each milestone below carries a tag. `[Dev]`: done on the dev machine.
+`[Dev · VM check]`: built on the dev machine, then checked on the VM.
+`[Dev · VM]`: substantial parts need the VM. `[VM]`: VM only.
+
+**M1 — Data model and state machine.** `[Dev]` Incident, Evidence, Proposal, Decision
 tables; stage transitions; SSE vocabulary. Testable with a stub emitter, no
 GPU, no blueprints. Extends the existing pytest suite.
 
-**M2 — Evidence linking.** Video player, document viewer, and the click
+**M2 — Evidence linking.** `[Dev · VM check]` Video player, document viewer, and the click
 behaviour joining them, against fixture data. The application is judged on
 this; if it is awkward, everything else is decoration.
 
-**M3 — ragproxy.** Verify it forwards without buffering, preserves the `/v1`
+**M3 — ragproxy.** `[Dev · VM check]` Verify it forwards without buffering, preserves the `/v1`
 suffix, emits clean events, and passes failures through. Confirms retrieval
 visibility before anything depends on it.
 
-**M4 — Approval gate.** The two-port split (ADR-V08), proposal endpoint, token
+**M4 — Approval gate.** `[Dev · VM check]` The two-port split (ADR-V08), proposal endpoint, token
 minting, server-side work-order creation, replay protection, the three decision
 actions, line items. Rewrite `test_api.py`, including the port-isolation tests:
 every operator route 404s on 8090, and `40-nemoclaw.sh`'s generated policy has
 no 8091. This is the security-relevant milestone; test it hardest.
 
-**M4a — Skill catalog, repoint path, selection bench.** First, the O17
+**M4a — Skill catalog, repoint path, selection bench.** `[VM]` First, the O17
 footprint check: confirm what each roster skill needs at v3.2.1 and settle the
 roster against the GPU budget. Then install the roster and build
 `scripts/ops/repoint-llm.sh`, `activate-pack.sh` and `doctor.sh` to the §4a contract at
@@ -1364,30 +1423,30 @@ disappoints: narrow the roster further, sharpen the `description` frontmatter
 the agent matches against, add explicit skill hints to the standing order. Swap
 the model only if those don't move it.
 
-**M5 — Telemetry plugin and activity stream, live.** Verify OpenClaw's hook
+**M5 — Telemetry plugin and activity stream, live.** `[Dev · VM]` Verify OpenClaw's hook
 points (O24), build the plugin (ADR-V09), then all five event classes against a
 real incident.
 Resolves **O4** and determines how much of §9 survives contact. Skill events
 are independent of O4, so this milestone produces a usable stream even in the
 worst case.
 
-**M5a — Archive search.** Contingent on O17 and O18. Seed clips ingested, `vss-search-archive` returning
+**M5a — Archive search.** `[VM]` Contingent on O17 and O18. Seed clips ingested, `vss-search-archive` returning
 them, matches rendering as thumbnails. Replaces the seeded-history approach and
 closes **O9**.
 
-**M6 — Proposal, parts, impact panels.** Including the inventory-changes-the-
+**M6 — Proposal, parts, impact panels.** `[Dev · VM]` Including the inventory-changes-the-
 recommendation test and `vss-manage-video-io-storage` clip extraction into
 work-order evidence.
 
-**M6a — Ask the footage.** `vss-ask-video` wired into the decision panel, with
+**M6a — Ask the footage.** `[Dev · VM]` `vss-ask-video` wired into the decision panel, with
 answers creating evidence rows and landing in the audit trail.
 
-**M7 — Fleet view and vertical selector.** Deliberately late; simplest screens,
+**M7 — Fleet view and vertical selector.** `[Dev · VM]` Deliberately late; simplest screens,
 least risk.
 
-**M8 — Audit trail.**
+**M8 — Audit trail.** `[Dev]`
 
-**M9 — Guide and module rewrite** (§2). Cannot start before M4 settles the
+**M9 — Guide and module rewrite** `[VM]` (§2). Cannot start before M4 settles the
 beat structure. The guide is the primary consumer of the dashboard (D3), so
 this milestone checks every screen against the module that uses it.
 
@@ -1396,6 +1455,58 @@ test of pack agnosticism: if it requires touching anything outside `packs/`
 (plus running `activate-pack.sh`), the abstraction is wrong.
 
 ---
+
+## 12a. Implementation status — 2026-09-13
+
+Built on the dev machine on branch `feat/operator-dashboard`. Everything tagged
+`[Dev]` in §12 is done; everything else is dev-complete and waits on the VM
+column of the §12 table.
+
+| Milestone | State on the dev machine | Evidence |
+|---|---|---|
+| M1 data model, state machine, SSE | Done | `mock-wo/app/{db,ops,events}.py`; `test_incidents.py`, `test_server.py` (live SSE across two real ports) |
+| M2 evidence linking | Dev-complete | `ui/src/components/{VideoPlayer,DocumentViewer}.tsx`; Vitest linking test |
+| M3 ragproxy | Dev-complete | `app/ragproxy.py`; ASGI-level no-buffering test |
+| M4 approval gate | Dev-complete | `test_gate.py` (incl. 8-thread concurrent approve → one work order), `test_ports.py`, container smoke |
+| M5 telemetry plugin + stream | Dev-complete | `openclaw/plugins/mock-wo-telemetry`, `app/telemetry.py`; plugin not yet installed by `40-nemoclaw.sh` (VM) |
+| M6 / M6a proposal panels, ask the footage | Dev-complete | `ProposalPanel.tsx`, `DecisionPanel.tsx`; `HttpVss` per `vss-ask-video` |
+| M7 fleet, selector | Dev-complete | `FleetView.tsx`; wake hook `HttpWake` (O2 on VM) |
+| M8 audit trail | Done | `AuditView`; audit snapshot survives reset (`test_gate.py`) |
+| M4a, M5a, M9, pack content | Not started | VM-only or blocked (O17, O18) |
+
+**Decisions taken while building** (record here so the spec and the code agree):
+
+- **Incident field names.** The incident's manifest key is `pack_incident_id`
+  (API and DB); `incident_id` always means the incident UUID, including on
+  evidence and proposals. The inject body keeps `incident_id` for the
+  manifest key, as §6.2 specified.
+- **Stage transitions.** detect → gather when the clip is submitted *and* the
+  wake hook accepts; failure is a recoverable `error` event and the incident
+  stays in detect with a Retry control. gather → propose → decide (or → act for
+  a monitoring note) happens inside the proposal request. Evidence is accepted
+  in gather and propose; a proposal needs at least one evidence row and its
+  draft's `equipment` must match the incident asset. One incident at a time;
+  an incident resting in act closes when the next one is injected.
+- **A route that is not on a port is a 404, never a 405** — including when a
+  GET shares the path shape (`POST /incidents/inject` on :8090).
+- **Missing assets 404.** The SPA fallback serves `index.html` only for
+  extensionless paths, so a broken build cannot hide behind the app shell.
+- **Telemetry rationale is consumed once.** A skill's rationale is only the
+  text since the previous skill started; it is never inherited or synthesised.
+- **Shutdown ends every SSE stream**, and graceful shutdown is bounded at 5 s,
+  so `docker stop` is not held by a connected dashboard.
+- **Dev-only fake clients.** `MOCK_WO_DEV_FAKE_CLIENTS=1` makes clip submission
+  and the wake hook succeed without doing anything, and answers asks with a
+  labelled placeholder. Real configuration always wins; `/health` reports the
+  flag; the lab compose never sets it. `scripts/dev/simulate-agent.py` plays the
+  agent's HTTP calls for UI work and VM rehearsal — never in front of a
+  learner (ADR-V03).
+- **Fixtures stay in `fixtures/` until M9.** `packs/manufacturing-motor-drive/`
+  references them, so the current prep and demo scripts keep working.
+- **Skill roster.** The manufacturing pack installs the three LVS-compatible
+  skills; the other three are commented out pending the O17 decision.
+- **NemoClaw policy.** `40-nemoclaw.sh` grants 8080 and 8090 only and fails
+  prep if the generated policy grants 8091 or 8081.
 
 ## 13. Open items
 
@@ -1415,16 +1526,16 @@ test of pack agnosticism: if it requires touching anything outside `packs/`
 | **O12** | `VSS_PUBLIC_HTTP_PROTOCOL`, `VSS_PUBLIC_HOST`, `VSS_PUBLIC_PORT` must be set or clip-URL skills fail rather than emitting malformed URLs | Before M6 |
 | **O13** | Does `vss-manage-alerts` in CV-verification mode fire reliably on pack clips, or is scripted injection still needed as a fallback? | Before M7 |
 | **O14** | Skill roster swapping on pack switch — symlink churn without an agent restart is documented, but untested here. Pack switch restarts vss-agent anyway (§4a), but not the NemoClaw sandbox | Future pack |
-| **O15** | Sentinel stylesheet token values — the §10 hexes are proposals pending its actual palette, in `nemoclaw-lab-cl/ui/src/index.css` | Before M2 |
+| **O15** | ~~Sentinel token values~~ **Closed 2026-09-13** — taken from `nemoclaw-lab-cl/ui/src/index.css`: field `#0a0e1a`, surface `#131b2c`, sunk `#0f1624`, line `#1f2937`, ink `#e5e7eb`, ink-muted `#9ca3af`, normal `#10b981`, warn `#f59e0b`, alarm `#ef4444`; `--agent` stays `#7b8fe8` (Sentinel has no equivalent). Contrast checked: ink-muted 6.7:1, agent 5.8:1 on surface | Closed |
 | **O16** | Does `openshell inference set` actually move a running sandbox off its baked-in model, or is re-onboarding the only route? §4a step 5 depends on it | **M4a — verify before you need it** |
-| **O17** | Skill footprint (D4): what services and GPU do `vss-search-archive`, `vss-query-analytics` and `vss-manage-alerts` CV verification need at v3.2.1, beyond the LVS profile? Drop or re-size decided then | **Before M4a** |
+| **O17** | ~~Skill footprint~~ **Checked 2026-09-13** (ADR-V05 table): search-archive needs the search profile; manage-alerts and query-analytics need the alerts profile; VSS profiles are mutually exclusive. **Decision still needed:** drop the precedent beat, fall back to declared history, or re-size to multi-GPU | **Decision before M5a** |
 | **O18** | Content production: `archive_seed_clips` (`clip-anomaly-01a/01b`), the pack's ambiguous incident, and its `monitoring_note` incident. None exist; current fixtures are provisional (ADR-004). Who produces them, and how? | Before M5a |
 | **O19** | Source of "estimated time to failure" for impact (§8.7): agent-derived from the corpus, pack-declared, or both labelled | Before M6 |
-| **O20** | Partial line-item approval: one work order with the approved subset, one work order per item, or something else? | Before M4 |
+| **O20** | Partial line-item approval: one work order with the approved subset, one work order per item, or something else? **Provisional (built):** one work order whose description lists the approved actions; the decision records the approved ids. Confirm or change | Before M9 |
 | **O21** | On deny, is the agent told (and does anything about its next run change), or does the incident simply close? | Before M4 |
-| **O22** | ragproxy reachability, both hops: the VSS agent container must resolve `mock-wo` (confirm the VSS stack joins `demo-net`), and mock-wo must resolve `rag-server` (join `nvidia-rag`, or use the host path) | Before M3 |
+| **O22** | ragproxy reachability, both hops: the VSS agent container must resolve `mock-wo` (confirm the VSS stack joins `demo-net`), and mock-wo must resolve `rag-server` (join `nvidia-rag`, or use the host path). **Built default:** mock-wo → RAG via `host.docker.internal:8081` (works with today's host publish); the VSS → mock-wo hop is unverified | VM, M3 check |
 | **O23** | Module 1 `vss-deploy-profile`: prep pre-starts the stack under start-order discipline, so the learner cannot redeploy. What does the deployment-side bookend become? | Before M9 |
-| **O24** | OpenClaw plugin hook points at NemoClaw v0.0.118: tool-call before/after, skill selection, token streaming. ADR-V09 depends on them | **Start of M5** |
+| **O24** | **Partly checked 2026-09-13** against the OpenClaw 2026.5.27 plugin SDK (vendored in `nemoclaw-lab-cl`). `before_tool_call` / `after_tool_call` carry tool name, params, result, error, `durationMs`. `llm_output` fires per model call and needs `allowConversationAccess`. **No token-level hook and no skill hook**: a skill surfaces as a read of its `SKILL.md` followed by ordinary tool calls, so mock-wo derives `skill.*` from the tool stream and `agent.token` is per-turn text. **Still to verify on the VM:** which OpenClaw version NemoClaw v0.0.118 bundles, and that these hooks fire inside the sandbox | **VM, start of M5** |
 
 Nothing now blocks the start of work. The remaining items are sequenced within
 milestones rather than ahead of them.

@@ -136,7 +136,8 @@ done
 [ -n "$SHIM_OK" ] \
     || fail "shim gate failed: GET :8080/v1/models does not list $MODEL_ID (stop — every later phase depends on it, build doc Phase 1)"
 wait_http 30 5 10 "http://127.0.0.1:8090/health"
-log "- 20-start step 1: auth-shim up (model $MODEL_ID listed via :8080), mock-wo up (:8090/health ok)"
+wait_http 30 5 10 "http://127.0.0.1:8091/health"
+log "- 20-start step 1: auth-shim up (model $MODEL_ID listed via :8080), mock-wo up (agent :8090/health ok, operator dashboard :8091/health ok)"
 
 # ---- STEP 2/5: VSS (VLM claims 40% of the EMPTY GPU) -----------------------
 echo ""

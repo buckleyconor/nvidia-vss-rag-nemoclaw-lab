@@ -1,0 +1,10 @@
+# Only what the two build stages need reaches the daemon.
+tests/
+**/__pycache__/
+**/*.pyc
+ui/node_modules/
+ui/dist/
+app/ui_dist/
+*.db
+*.db-wal
+*.db-shm

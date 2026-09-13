@@ -17,7 +17,7 @@
 #
 # Note on step 4: the 05 contract writes --cov=mock-wo.app. The dotted
 # module form is not importable — the package is named `app` INSIDE
-# mock-wo/ (the 03 Dockerfile contract: uvicorn app.main:app), and
+# mock-wo/ (the Dockerfile contract: python -m app.server), and
 # `mock-wo.app` is not a valid module name (the hyphen). The path form
 # --cov=mock-wo/app measures the same files (mock-wo/app/*.py) and
 # enforces the same >= 90% line-coverage gate.
@@ -43,6 +43,28 @@ echo "== 3/5 lint (ruff, mock-wo/ + tests/) =="
 echo "== 4/5 pytest: L0+L1 (mock-wo) + L3+L4 (repo-level), coverage >= 90% on mock-wo/app =="
 .venv/bin/pytest mock-wo/tests tests -q \
     --cov=mock-wo/app --cov-report=term-missing --cov-fail-under=90
+
+echo "== 4b/5 operator dashboard UI: install from lockfile, typecheck, vitest, build (D6) =="
+command -v npm >/dev/null 2>&1 \
+    || { echo "run-dev-tests: FAIL — npm not found (Node 22 builds the operator dashboard UI)" >&2; exit 1; }
+(
+    cd mock-wo/ui
+    npm ci --no-audit --no-fund --silent
+    npm run --silent typecheck
+    npm run --silent test
+    npm run --silent build
+)
+echo "ui: typecheck, tests and build ok (bundle in mock-wo/app/ui_dist)"
+
+echo "== 4c/5 OpenClaw telemetry plugin: typecheck, vitest, build (ADR-V09) =="
+(
+    cd openclaw/plugins/mock-wo-telemetry
+    npm ci --no-audit --no-fund --silent
+    npm run --silent typecheck
+    npm run --silent test
+    npm run --silent build
+)
+echo "plugin: typecheck, tests and build ok"
 
 echo "== 5/5 script syntax + lint (TC-039: bash -n and shellcheck on every scripts/**/*.sh) =="
 SCRIPT_COUNT=0
@@ -113,4 +135,4 @@ else
     echo "docker CLI absent — compose validation skipped (the VM re-run covers it)"
 fi
 
-echo "run-dev-tests: PASS (L0+L1+L3+L4). Closing gate: also run scripts/test/container-smoke.sh (L2)."
+echo "run-dev-tests: PASS (L0+L1+L3+L4 + UI). Closing gate: also run scripts/test/container-smoke.sh (L2)."

@@ -2,6 +2,23 @@
 
 Chosen stack, repo layout, tooling, and pinned dependencies. Depth is scaled to a single-user lab: the "application" is one small CPU-only service; the rest of the system is vendor blueprints configured through repo-carried contract files, not code.
 
+> **Amendment 2026-09-13 — operator dashboard (`operator-dashboard-spec.md`).**
+> mock-wo is now the dashboard backend and serves a React UI. Where this file
+> and the repo disagree, the repo files are authoritative:
+>
+> - **UI:** the Jinja2 row below is superseded. React 19 + Vite 8, built in a
+>   pinned `node:22.23.0-bookworm-slim` stage from `mock-wo/ui/package-lock.json`,
+>   with IBM Plex fonts vendored; the runtime image carries only the static
+>   bundle (D6). `jinja2` is removed from `requirements.txt`; `httpx` and
+>   `pyyaml` move to runtime (ragproxy, outbound clients, pack manifests).
+> - **Process:** `python -m app.server` runs two uvicorn servers in one process —
+>   agent API on :8090, operator dashboard on :8091 (ADR-V08). The Dockerfile,
+>   compose and healthcheck blocks below are the pre-dashboard contract, kept
+>   for history; see `mock-wo/Dockerfile` and `compose/mock-wo.yml`.
+> - **New repo paths:** `mock-wo/ui/` (dashboard), `packs/` (pack manifests),
+>   `openclaw/plugins/mock-wo-telemetry/` (ADR-V09 forwarder),
+>   `scripts/dev/simulate-agent.py` (dev-only agent stand-in).
+
 ## Technology choices (mock work-order service — the only code we build)
 
 | Choice | Pinned | Rationale (one line) | Alternative noted & rejected |

@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
-# L2 container smoke (05-test-strategy.md, TC-028..TC-031).
+# L2 container smoke (05-test-strategy.md, TC-028..TC-031; operator
+# dashboard ADR-V08).
 #
 # Self-contained and self-terminating: docker CLI + stdlib urllib only —
-# no pip, no venv (05: "the smoke script needs no pip at all").
-# Run from the lab repo root. Host port 18090 — never 8090, so the smoke
-# cannot collide with a learner session.
+# no pip, no venv. Run from the lab repo root. Host ports 18090/18091 —
+# never 8090/8091, so the smoke cannot collide with a learner session.
+#
+# The container runs with MOCK_WO_DEV_FAKE_CLIENTS=1 and the repo packs
+# mounted, so one incident can go inject -> evidence -> proposal -> decision
+# without VSS or NemoClaw. That flag is for this smoke and the dev machine
+# only.
 set -euo pipefail
 
 IMAGE=mock-wo:lab
 NAME=mock-wo-smoke
-PORT=18090
-BASE="http://127.0.0.1:${PORT}"
-HEALTH_DEADLINE=30   # 05 step 3: 30 s budget
+AGENT_PORT=18090
+OPERATOR_PORT=18091
+HEALTH_DEADLINE=60   # the image now runs two servers; 05 step 3 budget
 STATUS_DEADLINE=90   # 05 step 5: bounded wait for the image healthcheck
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -22,99 +28,111 @@ fail() { echo "container-smoke: FAIL — $*" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || fail "docker CLI not found"
 docker info >/dev/null 2>&1 || fail "docker daemon not reachable"
 
-echo "== TC-028: image builds (host arch) =="
-docker build -t "$IMAGE" -f mock-wo/Dockerfile mock-wo
+echo "== TC-028: image builds (host arch; UI stage + runtime stage) =="
+docker build -t "$IMAGE" -f "$REPO_ROOT/mock-wo/Dockerfile" "$REPO_ROOT/mock-wo"
 docker image inspect "$IMAGE" >/dev/null 2>&1 \
     || fail "TC-028: image $IMAGE not present after build"
+if docker run --rm --entrypoint sh "$IMAGE" -c 'command -v node' >/dev/null 2>&1; then
+    fail "TC-028: node is present in the runtime image (the UI must be built in the first stage only)"
+fi
 
-echo "== TC-029: container health on host port $PORT =="
+echo "== TC-029: both ports healthy =="
 docker rm -f "$NAME" >/dev/null 2>&1 || true
-docker run -d --name "$NAME" -p "${PORT}:8090" \
-    -e MOCK_WO_DB_PATH=/tmp/smoke.db "$IMAGE" >/dev/null
+docker run -d --name "$NAME" \
+    -p "${AGENT_PORT}:8090" -p "${OPERATOR_PORT}:8091" \
+    -v "$REPO_ROOT/packs:/packs:ro" -v "$REPO_ROOT/fixtures:/fixtures:ro" \
+    -e MOCK_WO_DB_PATH=/tmp/smoke.db -e MOCK_WO_DEV_FAKE_CLIENTS=1 \
+    "$IMAGE" >/dev/null
 
-HEALTH_OK=$(python3 - "$BASE" "$HEALTH_DEADLINE" <<'PY' || echo timeout
-import sys, time, urllib.request
+python3 - "$AGENT_PORT" "$OPERATOR_PORT" "$HEALTH_DEADLINE" <<'PY' || fail "TC-029: /health not 200 on both ports within ${HEALTH_DEADLINE} s"
+import json, sys, time, urllib.request
 
-base, deadline = sys.argv[1], float(sys.argv[2])
+agent, operator, deadline = sys.argv[1], sys.argv[2], float(sys.argv[3])
 start = time.monotonic()
-while True:
-    try:
-        with urllib.request.urlopen(base + "/health", timeout=3) as r:
-            body = r.read().decode()
-            if r.status == 200:
-                print(f"ok at {time.monotonic() - start:.1f} s: {body}")
-                sys.exit(0)
-    except Exception:
-        pass
+pending = {"agent": agent, "operator": operator}
+while pending:
+    for name, port in list(pending.items()):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=3) as r:
+                body = json.loads(r.read().decode())
+                if r.status == 200 and body.get("port") == name:
+                    print(f"{name} ok at {time.monotonic() - start:.1f} s: {body}")
+                    del pending[name]
+        except Exception:
+            pass
     if time.monotonic() - start > deadline:
         sys.exit(1)
     time.sleep(0.5)
 PY
-)
-[ "$HEALTH_OK" != "timeout" ] \
-    || fail "TC-029: /health not 200 within ${HEALTH_DEADLINE} s"
-echo "$HEALTH_OK"
 
-echo "== TC-030: container API round-trip =="
-WORK_ORDER_ID=$(python3 - "$BASE" <<'PY' || fail "TC-030: POST work order failed"
-import json, sys, urllib.request
+echo "== TC-030: gated round-trip across the two ports =="
+python3 - "$AGENT_PORT" "$OPERATOR_PORT" <<'PY' || fail "TC-030: round-trip failed"
+import json, sys, time, urllib.error, urllib.request
 
-base = sys.argv[1]
-payload = {
-    "title": "Bearing replacement — M-3021 motor drive",
-    "description": (
-        "Smoke-test work order: thermal anomaly on motor M-3021 detected"
-        " at clip-anomaly-01@00:42."
-    ),
-    "equipment": "M-3021",
-    "anomaly_ref": "vss-alert-clip-anomaly-01-00:42",
-    "priority": "high",
-    "assigned_to": "maintenance-team-b",
-    "citations": [
-        {
-            "source_type": "rag",
-            "source_id": "manual-01#p12",
-            "quote": "Bearing temperature above 75°C: replace per"
-                     " preventive schedule.",
-        },
-        {
-            "source_type": "vss",
-            "source_id": "clip-anomaly-01@00:42",
-            "quote": "RT-VLM caption: heat signature on bearing housing,"
-                     " vibration audible.",
-        },
-    ],
-}
-req = urllib.request.Request(
-    base + "/api/v1/work-orders",
-    data=json.dumps(payload).encode(),
-    headers={"Content-Type": "application/json"},
-    method="POST",
-)
-with urllib.request.urlopen(req, timeout=10) as r:
-    assert r.status == 201, f"POST -> {r.status}, want 201"
-    print(json.loads(r.read().decode())["id"])
-PY
-)
+agent = f"http://127.0.0.1:{sys.argv[1]}"
+operator = f"http://127.0.0.1:{sys.argv[2]}"
 
-python3 - "$BASE" "$WORK_ORDER_ID" <<'PY' || fail "TC-030: GET list round-trip failed"
-import json, sys, urllib.request
 
-base, wo_id = sys.argv[1], sys.argv[2]
-with urllib.request.urlopen(base + "/api/v1/work-orders", timeout=10) as r:
-    assert r.status == 200, f"GET list -> {r.status}, want 200"
-    ids = [w["id"] for w in json.loads(r.read().decode())]
-    assert wo_id in ids, "created work order not in the list"
+def call(base, method, path, body=None):
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(base + path, data=data, method=method,
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            text = r.read().decode()
+            return r.status, (json.loads(text) if text and text[0] in "[{" else text)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+
+
+status, incident = call(operator, "POST", "/api/v1/incidents/inject",
+                        {"asset_id": "M-3021", "incident_id": "M3021-BEARING-THERMAL"})
+assert status == 201, f"inject -> {status} {incident}"
+for _ in range(50):
+    if call(operator, "GET", f"/api/v1/incidents/{incident['id']}")[1]["stage"] == "gather":
+        break
+    time.sleep(0.1)
+else:
+    raise AssertionError("incident never reached gather")
+status, evidence = call(agent, "POST", "/api/v1/evidence", {
+    "incident_id": incident["id"], "source_type": "rag", "source_id": "manual-01#4.2",
+    "quote": "Bearing temperature above 75°C: replace per preventive schedule.",
+    "claim": "Smoke: replacement threshold", "document_anchor": "4.2", "confidence": "high"})
+assert status == 201, f"evidence -> {status}"
+status, proposal = call(agent, "POST", "/api/v1/proposals", {
+    "incident_id": incident["id"], "kind": "work_order", "root_cause": "Smoke test",
+    "draft": {"title": "Smoke — bearing replacement", "description": "smoke",
+              "equipment": "M-3021", "anomaly_ref": "smoke", "priority": "high"}})
+assert status == 201 and proposal["state"] == "pending", f"proposal -> {status} {proposal}"
+assert call(operator, "GET", "/api/v1/work-orders")[1] == [], "work order exists before a decision"
+# ADR-V08 in the real container: the agent port has no decision route.
+status, _ = call(agent, "POST", f"/api/v1/proposals/{proposal['id']}/decision", {"action": "approve"})
+assert status == 404, f"agent-port decision -> {status}, want 404"
+status, decided = call(operator, "POST", f"/api/v1/proposals/{proposal['id']}/decision",
+                       {"action": "approve"})
+assert status == 200 and decided["state"] == "approved", f"decision -> {status}"
+orders = call(agent, "GET", "/api/v1/work-orders")[1]
+assert [o["proposal_id"] for o in orders] == [proposal["id"]], "work order not created by approval"
+status, _ = call(operator, "POST", f"/api/v1/proposals/{proposal['id']}/decision", {"action": "approve"})
+assert status == 409, f"replay -> {status}, want 409"
+print("inject -> evidence -> proposal -> (agent 404) -> approve -> work order -> replay 409")
 PY
 
-python3 - "$BASE" <<'PY' || fail "TC-030: GET / (UI) failed"
-import sys, urllib.request
+python3 - "$AGENT_PORT" "$OPERATOR_PORT" <<'PY' || fail "TC-030: operator UI not served"
+import sys, urllib.error, urllib.request
 
-base = sys.argv[1]
-with urllib.request.urlopen(base + "/", timeout=10) as r:
-    assert r.status == 200, f"GET / -> {r.status}, want 200"
+agent, operator = sys.argv[1], sys.argv[2]
+with urllib.request.urlopen(f"http://127.0.0.1:{operator}/", timeout=10) as r:
     html = r.read().decode()
-    assert "Bearing replacement" in html, "title not present in UI HTML"
+    assert r.status == 200 and '<div id="root">' in html, "SPA index missing"
+    for host in ("fonts.googleapis.com", "fonts.gstatic.com", "cdn.", "unpkg.com"):
+        assert host not in html, f"external host {host} in index.html"
+try:
+    urllib.request.urlopen(f"http://127.0.0.1:{agent}/", timeout=10)
+    raise AssertionError("agent port serves the UI")
+except urllib.error.HTTPError as e:
+    assert e.code == 404, f"agent GET / -> {e.code}, want 404"
+print("operator UI served on :8091; agent port serves no UI")
 PY
 
 echo "== TC-031: healthcheck wiring =="
@@ -129,6 +147,22 @@ done
 [ "$status" = "healthy" ] \
     || fail "TC-031: Health status is '${status:-<none>}' after ${STATUS_DEADLINE} s, want 'healthy'"
 echo "Health status: healthy"
+
+echo "== graceful stop (an open SSE stream must not hold docker stop) =="
+python3 - "$OPERATOR_PORT" <<'PY' &
+import sys, urllib.request
+try:
+    with urllib.request.urlopen(f"http://127.0.0.1:{sys.argv[1]}/api/v1/stream", timeout=60) as r:
+        r.read()
+except Exception:
+    pass
+PY
+sleep 1
+stop_start=$(date +%s)
+docker stop -t 30 "$NAME" >/dev/null
+stop_secs=$(( $(date +%s) - stop_start ))
+[ "$stop_secs" -lt 10 ] || fail "docker stop took ${stop_secs} s with an SSE client connected"
+echo "stopped in ${stop_secs} s"
 
 cleanup
 trap - EXIT

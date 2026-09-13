@@ -1,5 +1,17 @@
 # 05 — Test strategy
 
+> **Amendment 2026-09-13 — operator dashboard.** The dev gate
+> (`scripts/test/run-dev-tests.sh`) adds the dashboard UI (lockfile install,
+> typecheck, Vitest, build) and the OpenClaw telemetry plugin (typecheck,
+> Vitest, build). The L2 container smoke now builds both stages, asserts Node
+> is absent from the runtime image, checks both ports, runs a gated round-trip
+> (inject → evidence → proposal → agent-port decision 404 → operator approve
+> → work order → replay 409) with the dev-only fake clients, and checks that
+> `docker stop` is not held by an open SSE stream. The L1 UI tests below
+> (TC-021..TC-023, Jinja2) are superseded by `mock-wo/tests/test_api.py` SPA
+> serving tests and the Vitest suites. The dev-machine vs GPU-VM split per
+> milestone is in `operator-dashboard-spec.md` §12.
+
 **Scope reality first:** this spec's buildable code is the mock work-order service plus the repo's contracts (compose/env/config files, deployment scripts, fixture manifests). The VSS/RAG/NemoClaw stacks are vendor blueprints configured at environment prep. Therefore the dev-machine gate covers the mock service end-to-end and the contract files deterministically; **everything GPU- or VM-dependent is deferred to environment prep / QA on the learner VM** (named checklist at the end of this section — it becomes the QA content of `09`/`10` and the guide).
 
 **Dev-machine facts the strategy is built on (already verified):** aarch64 (ARM), 20 cores, 121 GB RAM; python3 3.12.3; node v22.23.2; docker 29.2.1 with a running daemon (inside the lab's < 29.5.0 NGC-pull bound); Compose v5.0.2 (above the lab's v2.39.1 floor); uv 0.11.26; jq 1.7; **shellcheck absent**. No GPU here; the lab's H100 (x86 vCD VM) is unreachable from this machine. Consequently **every test in this section runs CPU-only on the aarch64 dev machine** — no x86 images, no vendor NIMs, no ~94 GB card assumed anywhere in the dev gate.

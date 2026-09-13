@@ -15,11 +15,15 @@ This repo is the single source for the lab: build code **and** the lab guide.
 | Path | What it is |
 | --- | --- |
 | `spec/` | The ten build documents — source of truth for the build track |
-| `mock-wo/` | The mock CMMS service (FastAPI + SQLite; work orders, notifications, notes, small UI) |
+| `mock-wo/` | The mock CMMS and operator dashboard backend (FastAPI + SQLite): agent API on :8090, operator dashboard on :8091 (`operator-dashboard-spec.md`) |
+| `mock-wo/ui/` | The operator dashboard UI (React + Vite, fonts vendored; built into the image) |
+| `packs/` | Pack manifests — one directory per vertical (manufacturing first) |
+| `openclaw/plugins/mock-wo-telemetry/` | OpenClaw plugin forwarding tool-call and model-output hooks to mock-wo (display-only) |
 | `config/` | Environment contract files: per-VM `lvs.env` (instructor-injected, gitignored) + lab-owned `rag.env` / `vlm.env` / `nemoclaw.env` (+ `*.env.example` templates) |
 | `scripts/prep/` | The environment bring-up chain: `00 → 10 → 20 (finishes by arming 50-resilience.sh) → 25 → 30 → 40` (instructor-run on the build VM) |
 | `scripts/demo/` | Session helpers the learner runs: `01-baseline`, `02-anomaly`, `03-agent-kickoff` |
 | `scripts/test/` | Dev gate (`run-dev-tests.sh`) + container smoke (`container-smoke.sh`) |
+| `scripts/dev/` | Dev-only helpers — `simulate-agent.py` plays the agent's HTTP calls; never part of a learner session |
 | `fixtures/` | Fixture manifests + provisional fixtures (video, corpus, rag-index) — structure-gated, content curated at prep (ADR-004) |
 | `tests/` | pytest suite (L4) — contracts, start order, fixtures |
 | `guide.md` | The learner-facing lab guide (HOL-1362-01) — house format |
@@ -28,7 +32,8 @@ This repo is the single source for the lab: build code **and** the lab guide.
 
 ## Running it
 
-- **Dev gate** (no GPU needed): `python3 -m venv .venv && .venv/bin/pip install -r mock-wo/requirements-dev.txt && bash scripts/test/run-dev-tests.sh`
+- **Dev gate** (no GPU needed; Node 22 for the UI and plugin): `python3 -m venv .venv && .venv/bin/pip install -r mock-wo/requirements-dev.txt && bash scripts/test/run-dev-tests.sh`
+- **Dashboard on the dev machine** (no VSS, no NemoClaw): `(cd mock-wo/ui && npm ci && npm run build)`, then `cd mock-wo && MOCK_WO_DB_PATH=../state/dev/mock-wo.db MOCK_WO_PACKS_DIR=../packs MOCK_WO_DEV_FAKE_CLIENTS=1 ../.venv/bin/python -m app.server`; open http://127.0.0.1:8091, inject a fault, then run `scripts/dev/simulate-agent.py`
 - **Environment bring-up** (build VM, GPU): `bash scripts/prep/00-host-prep.sh` … `40-nemoclaw.sh`, per `lab-prep.md`; recorded reality lands in `prep-log.md` (gitignored)
 - **Learner session**: follow `guide.md` — the demo scripts in `scripts/demo/` do the staging, the learner operates the UIs
 

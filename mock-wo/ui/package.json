@@ -1,0 +1,32 @@
+{
+  "name": "mock-wo-operator-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Operator dashboard for mock-wo (operator-dashboard-spec). Built into mock-wo/app/ui_dist and served on :8091.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "30.0.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  }
+}

@@ -1,11 +1,9 @@
 -r requirements.txt
-httpx==0.27.2
 pytest==8.3.2
 # pytest-cov: implements the --cov/--cov-fail-under flags of the 05 gate
 pytest-cov==5.0.0
 coverage==7.6.0
 ruff==0.8.4
-pyyaml==6.0.2
 # shellcheck-py: ships the shellcheck binary as a wheel, so the dev gate
 # can lint the prep/demo scripts on any machine (TC-039 step 5)
 shellcheck-py==0.10.0.1

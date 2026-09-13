@@ -2,6 +2,15 @@
 
 Components, data flow, data model, and interfaces. The mock work-order service (mock-wo) has **no upstream design** — per the spec authoring rule for this lab, its full contract is pinned here and in `03-build-decisions.md` (build/tooling side). Everything else is the vendor blueprints' documented surface, consumed as contracts from the build document.
 
+> **Amendment 2026-09-13 — operator dashboard.** The mock-wo contract in this
+> file (REST table, UI surface, beat 4 flow) describes the pre-dashboard lab and
+> is superseded by `operator-dashboard-spec.md` §5–§6 and ADR-V04/V08: the agent
+> files a **proposal** on :8090 and a work order exists only after an operator
+> approves on :8091; `POST /api/v1/work-orders` and `POST /api/v1/notes` are no
+> longer public; the Jinja2 UI is replaced by the React dashboard on :8091.
+> mock-wo's pytest suite (`mock-wo/tests/`) is the executable form of the new
+> contract.
+
 ## Major components
 
 | # | Component | Kind | Responsibility | Beats served |

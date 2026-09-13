@@ -84,7 +84,7 @@ echo "staged: $COUNT clip(s) at $VIDEO_DIR"
 LVS_UI=$(grep -oE 'LVS UI.*' "$PREP_LOG" 2>/dev/null | tail -1 || true)
 echo ""
 echo "== beat 1 procedure (the learner does this in the UI) =="
-echo "1. Open the LVS UI${LVS_UI:+ ($LVS_UI — recorded at prep)}; the stack is up and the work-order list at http://localhost:8090 is EMPTY (baseline)."
+echo "1. Open the LVS UI${LVS_UI:+ ($LVS_UI — recorded at prep)}; the stack is up and the operator dashboard at http://localhost:8091 shows every asset Normal and no work orders (baseline)."
 echo "2. Play the staged normal-state clip(s) through VSS (the $COUNT clip(s) at $VIDEO_DIR)."
 echo "3. Watch: captioning + summarisation complete, the LVS UI shows a HEALTHY pipeline and NO alerts."
 echo ""

@@ -1,20 +1,43 @@
-# compose/mock-wo.yml — standalone file (also the dev-machine smoke target).
-# VERBATIM contract from 03-build-decisions.md. `demo-net` is the auth-shim
-# network (build doc contract) — created by the shim compose in the full
-# lab; declared `external` here so this file joins that network rather than
-# owning it. Start the shim first (20-start.sh STEP 1 does).
+# compose/mock-wo.yml — mock-wo: agent API + operator dashboard (also the
+# dev-machine smoke target). operator-dashboard-spec ADR-V08: two ports, one
+# process. :8090 is the only mock-wo port in the NemoClaw network policy;
+# :8091 serves the operator dashboard and is never added to that policy.
+#
+# `demo-net` is the auth-shim network — created by the shim compose in the
+# full lab and declared `external` here. Start the shim first (20-start.sh
+# STEP 1 does).
 services:
   mock-wo:
     image: mock-wo:lab
     build: ../mock-wo   # relative to THIS file's dir (compose/), not the repo root
     container_name: mock-wo
-    ports: ["8090:8090"]
+    ports:
+      - "8090:8090"   # agent API + ragproxy — in the NemoClaw policy
+      - "8091:8091"   # operator dashboard — NEVER in the NemoClaw policy
     environment:
       MOCK_WO_DB_PATH: /data/mock-wo/work-orders.db
+      MOCK_WO_PACKS_DIR: /packs
+      MOCK_WO_ACTIVE_PACK: ${MOCK_WO_ACTIVE_PACK:-manufacturing-motor-drive}
+      # ragproxy upstream (ADR-V02). The host path works with RAG's current
+      # host publish on 8081; joining nvidia-rag instead is O22.
+      RAG_UPSTREAM_URL: ${RAG_UPSTREAM_URL:-http://host.docker.internal:8081}
+      # Clip submission and ask-the-footage (§7.2, §8.6). Unset = the
+      # dashboard reports a visible error instead of pretending.
+      VSS_AGENT_URL: ${VSS_AGENT_URL:-}
+      VST_URL: ${VST_URL:-}
+      # OpenClaw wake hook (O2) — values printed at NemoClaw onboarding.
+      OPENCLAW_HOOK_URL: ${OPENCLAW_HOOK_URL:-}
+      OPENCLAW_HOOK_TOKEN: ${OPENCLAW_HOOK_TOKEN:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - mock-wo-data:/data/mock-wo
+      # Packs are content, mounted read-only. The manufacturing pack reads
+      # its clips and corpus from fixtures/ until the M9 move (pack.yaml).
+      - ../packs:/packs:ro
+      - ../fixtures:/fixtures:ro
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request as u; [u.urlopen(f'http://127.0.0.1:{p}/health', timeout=2) for p in (8090, 8091)]"]
       interval: 10s
       timeout: 3s
       retries: 12
@@ -23,7 +46,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2g       # within the sizing's ~1–2 GB estimate; CPU-only, no GPU
+          memory: 2g       # O7: CPU-only; re-measure with the dashboard at M1 on the VM
 
 volumes:
   mock-wo-data:            # per-instance learner state; wiped on VM reset

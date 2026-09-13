@@ -1,0 +1,18 @@
+{
+  "id": "mock-wo-telemetry",
+  "name": "mock-wo telemetry",
+  "description": "Forwards tool-call and model-output hook events to mock-wo so the operator dashboard can show the skill trace and the agent's reasoning. Display-only: it changes nothing the agent does.",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "mock-wo agent-events URL (agent port :8090 only)."
+      }
+    }
+  },
+  "activation": {
+    "onStartup": true
+  }
+}

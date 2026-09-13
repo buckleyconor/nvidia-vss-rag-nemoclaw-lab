@@ -45,7 +45,8 @@ check "LVS backend :38111/v1/ready" curl -sf -m 10 http://127.0.0.1:38111/v1/rea
 check "RT-VLM :8018/v1/health/ready" curl -sf -m 10 http://127.0.0.1:8018/v1/health/ready
 check "RAG server :8081/v1/health" curl -sf -m 10 "http://127.0.0.1:8081/v1/health?check_dependencies=true"
 check "RAG ingestor :8082/v1/health" curl -sf -m 10 "http://127.0.0.1:8082/v1/health?check_dependencies=true"
-check "mock-wo :8090/health" curl -sf -m 10 http://127.0.0.1:8090/health
+check "mock-wo agent port :8090/health" curl -sf -m 10 http://127.0.0.1:8090/health
+check "mock-wo operator dashboard :8091/health" curl -sf -m 10 http://127.0.0.1:8091/health
 
 # the local LLM NIM must NOT be running (02: generation is remote via the
 # shared endpoint; its running is a misconfiguration signal)

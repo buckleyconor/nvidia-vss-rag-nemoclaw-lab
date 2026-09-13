@@ -132,6 +132,7 @@ auth-shim|http://127.0.0.1:8080/v1/models|auth-shim|$GRACE
 rag-server|http://127.0.0.1:8081/v1/health|rag-server|$GRACE
 ingestor|http://127.0.0.1:8082/v1/health|ingestor-server|$GRACE
 mock-wo|http://127.0.0.1:8090/health|mock-wo|$GRACE
+mock-wo-operator|http://127.0.0.1:8091/health|mock-wo|$GRACE
 kibana|http://127.0.0.1:5601/kibana/api/status|kibana|$GRACE
 "
 

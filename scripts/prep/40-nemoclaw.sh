@@ -11,9 +11,11 @@
 #      policy is re-applied idempotently (2026-09-10 dry-run).
 #   2. Network-policy extension: the VSS preset grants VSS on :8000 only.
 #      The lab policy file (generated here into state/, gitignored) is the
-#      preset PLUS the lab endpoints — RAG :8081, auth-shim :8080,
-#      mock-wo :8090 (02: "the NemoClaw network-policy extension
-#      pre-approves mock-wo:8090 alongside the build document's list").
+#      preset PLUS the lab endpoints — auth-shim :8080 and mock-wo :8090,
+#      the agent port (operator-dashboard-spec ADR-V08). Deliberately NOT
+#      granted: RAG :8081 (the agent's only knowledge path is VSS frag —
+#      ADR-V01/V06) and mock-wo :8091, the operator port that carries the
+#      approval gate. The generated policy is checked for both below.
 #      Before apply, entries that overlap the sandbox's built-in baseline
 #      are stripped (NemoClaw rejects host:port overlaps with conflicting
 #      metadata — "network endpoint ambiguity validation failed",
@@ -47,7 +49,10 @@ NEMOCLAW_WANT="0.0.118"
 # on it ("The model ... does not exist"), so the probe must carry the
 # served id explicitly (2026-09-10 dry-run).
 MODEL_ID="nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4"
-LAB_ENDPOINTS=(8080 8081 8090)
+LAB_ENDPOINTS=(8080 8090)
+# Ports the sandbox must never reach. 8091 is the operator dashboard: if the
+# agent could reach it, it could approve its own proposals (ADR-V08).
+FORBIDDEN_ENDPOINTS=(8091 8081)
 
 PREP_LOG="$REPO_ROOT/prep-log.md"
 log() { printf '%s\n' "$*" >> "$PREP_LOG"; }
@@ -186,6 +191,12 @@ text = re.sub(r"^[ \t]+allowed_ips:[ \t]*\n(?:[ \t]+- \S+[ \t]*\n)+", "", text, 
 open(out_path, "w").write(text)
 print(f"lab endpoints added: {added or []}; already granted by the preset: {already or []}")
 PY
+for port in "${FORBIDDEN_ENDPOINTS[@]}"; do
+    if grep -Eq "^[[:space:]]+port:[[:space:]]*${port}([^0-9]|$)" "$POLICY_FILE"; then
+        fail "generated policy grants port $port — the sandbox must never reach it (operator-dashboard-spec ADR-V06/ADR-V08); fix the preset or LAB_ENDPOINTS"
+    fi
+done
+echo "policy check: no grant for ${FORBIDDEN_ENDPOINTS[*]}"
 log ""
 log "## $(date -u +%Y-%m-%dT%H:%M:%SZ) — 40-nemoclaw: sandbox $SANDBOX"
 log "- lab policy file: state/nemoclaw-policy.yaml (VSS preset + lab endpoints ${LAB_ENDPOINTS[*]} — 02)"
