@@ -1,0 +1,21 @@
+# lab-nemoclaw-hook-relay.service — host-side OpenClaw wake-hook bridge
+# (operator-dashboard-spec O2, 2026-09-13: the nemoclaw-lab-cl /hooks/wake
+# endpoint does not exist in OpenClaw 2026.7.1 — the relay translates the
+# wake POST into `nemoclaw demo agent`, the current agent-turn surface).
+[Unit]
+Description=NemoClaw hook relay — accept wake POSTs on 172.18.0.1:18790, run agent turns
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Environment=HOME=/root
+Environment=HOOK_RELAY_BIND=172.18.0.1
+Environment=HOOK_RELAY_PORT=18790
+ExecStart=/usr/bin/python3 /usr/local/lib/lab/nemoclaw-hook-relay.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

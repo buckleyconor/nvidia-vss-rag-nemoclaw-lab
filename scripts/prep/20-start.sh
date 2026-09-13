@@ -118,7 +118,18 @@ echo "starting auth-shim (compose/docker-compose.shim.yml, env from $LAB_ENV —
 # reads `export FOO=bar` as a key named "export FOO" and strips quotes
 # differently from the shell that sources the same file.
 docker compose -f compose/docker-compose.shim.yml up -d >/dev/null
-echo "starting mock-wo (compose/mock-wo.yml)"
+echo "starting mock-wo (compose/mock-wo.yml; outbound clients from config/mock-wo.env — operator-dashboard O2/O22)"
+# mock-wo's outbound client config (wake hook via the lab hook relay, VSS
+# agent :8000, VST :30888 — values verified per VM, 2026-09-13). Real file
+# is gitignored (04); the template config/mock-wo.env.example carries the
+# placeholders. Absent = the clients stay disabled and the dashboard
+# reports visible errors (spec: silence reads as breakage), so no fail here.
+if [ -f "$REPO_ROOT/config/mock-wo.env" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$REPO_ROOT/config/mock-wo.env"
+    set +a
+fi
 docker compose -f compose/mock-wo.yml up -d >/dev/null
 # The shared endpoint has shown transient slow/hung windows on the dev VM
 # (2026-09-07, prep-log finding): a 120 s budget failed twice while the
