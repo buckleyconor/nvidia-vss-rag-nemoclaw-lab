@@ -1,0 +1,27 @@
+[Unit]
+Description=NemoClaw boot repair (tiered heal ladder — recover -> start -> 40-nemoclaw -> clean re-onboard)
+Documentation=file:///usr/local/lib/lab/nemoclaw-heal.sh
+# The sandbox container (docker, unless-stopped) and the GPU driver must be
+# up before the repair probes anything. (nemoclaw-recover.sh remains in place
+# as the legacy vendor-only path; this unit runs the ladder that supersedes
+# it — 2026-09-11: `demo recover` alone was blocked by the vendor's schema-8
+# state wall after the VM reboot while the inference route 503'd.)
+After=docker.service network-online.target nvidia-persistenced.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+# systemd does not set HOME for system services; the CLI resolves its
+# state dir and nvm bootstrap from HOME (root's — matches the install).
+Environment=HOME=/root
+# Settle time: the container swarm (42 units) needs a minute after the
+# daemon before the sandbox gateway answers probes. The 5-min health-watch
+# timer covers whatever this pass does not.
+ExecStartPre=/bin/sleep 90
+ExecStart=/usr/local/lib/lab/nemoclaw-heal.sh
+# The nuclear tier (clean re-onboard) takes up to ~15 minutes; the ladder
+# exits fast on the common (healthy) path.
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

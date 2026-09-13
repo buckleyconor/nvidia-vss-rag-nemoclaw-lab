@@ -1,11 +1,11 @@
 {
   "ok": true,
-  "guideDir": "/home/democenter/projects/nvidia-service-bp-vss-rag-nemoclaw",
+  "guideDir": "/home/demouser/projects/nvidia-vss-rag-nemoclaw-lab",
   "findings": [],
   "summary": {
     "errors": 0,
     "warnings": 0
   },
-  "shellcheck": [],
-  "at": "2026-09-04T00:15:48.678Z"
+  "shellcheck": "skipped (shellcheck not installed)",
+  "at": "2026-09-10T22:35:00.230Z"
 }

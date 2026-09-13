@@ -81,7 +81,7 @@ logs, and maintenance schedule the engineer would read (visible RAG hits and
 reasoning), and the work order it files in the mock CMMS is its action — so
 the learner sees, in the same session, the same anomaly that would have been
 an alert on a screen become a diagnosed, cited work order. The composition
-also holds in a lab footprint a real pool can run: one VM and one 96 GB GPU
+also holds in a lab footprint a real pool can run: one VM and one ~94 GB GPU
 host the video and retrieval models while the reasoning LLM is served from a
 shared off-VM endpoint, and the project's measured runs show RAG retrieval
 and LLM fusion add only a couple of seconds to a ~250 s end-to-end run — the
@@ -105,7 +105,7 @@ The lab has done its job when a learner can:
    the evidence of the diagnosis, not just the final answer.
 4. State why the reasoning LLM is shared/off-VM while the video model and the
    RAG retrieval models run locally on the GPU — the footprint/density reason:
-   one VM, one 96 GB GPU, a pool of ten learners.
+   one VM, one ~94 GB GPU, a pool of ten learners.
 
 ## Non-goals
 

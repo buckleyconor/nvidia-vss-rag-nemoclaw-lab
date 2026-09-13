@@ -32,7 +32,7 @@ it is verified.
 
 | # | Constraint | Why it is hard | Evidence | Verified by |
 |---| ---------- | -------------- | -------- | ----------- |
-| 1 | **Full PCIe passthrough of the RTX PRO 6000 96 GB — NOT vGPU** | NIM probes the GPU device directly for profile selection; a vGPU partition changes what it sees | build document §2 (VM specification) | L5 item 2/3 (NIMs profile at prep; `nvidia-smi` shows ~97871 MiB to the VM); `lab-prep.md` verify checks |
+| 1 | **vGPU H100 partition — ~94 GB (96256 MiB) visible to the VM** (platform change 2026-09-07; supersedes RTX PRO 6000 96 GB full passthrough) | the ~70 GB committed co-residency budget needs the full vRAM inside the VM; dev-VM observation 2026-09-07: `H100L-94C`, 96256 MiB, driver 580.105.08 — learner SKU, full vRAM visibility, and the H100 profile name all platform-confirmed 2026-09-07 | platform decision 2026-09-07 (supersedes build document §2 VM specification) | L5 item 2/3 (NIMs profile at prep; `nvidia-smi` shows ~96256 MiB to the VM); `lab-prep.md` verify checks |
 | 2 | **`/dev/shm` 32 GB** (Docker `default-shm-size: 32G`) | VSS decode / Docker shared-memory paths OOM below 16 GB; 32 GB is the recommended value | sizing reduction row (/dev/shm); build document daemon.json | `lab-prep.md` verify check on the Docker daemon config |
 | 3 | **`vm.max_map_count=262144`** (plus `fs.file-max=2097152`, `net.core.somaxconn=4096`) | Elasticsearch **refuses to start** without it | build document failure modes (ES exits immediately) | `lab-prep.md` verify check: `sysctl vm.max_map_count` |
 | 4 | **NVIDIA driver 580.105.08 exact** (Ubuntu 24.04 build — the VSS canonical-matrix exact pin for 24.04; 580.65.06 is the 22.04 variant, not used) | exact driver pin per the VSS host matrix (not just a floor) | VSS 3.2.1 host requirements (user-supplied, 2026-09-02); sizing software stack; build document §4.1 | `lab-prep.md` verify check: `nvidia-smi` driver version |
@@ -45,16 +45,16 @@ it is verified.
 
 1. Pool size/capacity: 10 VMs at 32 vCPU / 256 GB RAM / 2 TB NVMe each
    (the documented 192 GB / 1.5 TB minimums are under-provisioned — see §9).
-2. GPU delivery: full PCIe passthrough (constraint 1), driver **580.105.08 exact**
+2. GPU delivery: vGPU H100 partition (constraint 1), driver **580.105.08 exact**
    pre-baked in the VM template (constraint 4).
 3. VM template pre-baking: Docker Engine inside the ≥ 28.3.3 / < 29.5.0 window
    with Compose ≥ v2.39.1 (constraint 8), Docker `cgroupfs` + `default-shm-size: 32G`
    (constraints 2, 6) and the sysctl file (constraint 3) — so a learner VM is
    ready out of the template.
 4. Shared-endpoint capacity for 10 concurrent sessions (constraint 7) — that
-   the endpoint serves the expected model image
-   `nvcr.io/nim/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:1.7.0-variant`
-   (§8 item 20) — and how the `SHARED_API_KEY` / endpoint location reach each
+   the endpoint `https://model.delllabs.local/api/nemotron35/v1` serves model
+   ID `NVIDIA/Nemotron-3.5-Lightning-30B-A3B` (§8 item 20, owner-confirmed
+   2026-09-07) — and how the `SHARED_API_KEY` / endpoint location reach each
    VM (instructor runbook, §8 item 23).
 5. Shared datastore: whether vCD can mount a shared read-only datastore for
    the weight caches (~350 GB per VM otherwise — ADR-005, §8 item 21).

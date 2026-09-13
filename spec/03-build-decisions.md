@@ -181,7 +181,7 @@ nvidia-service-bp-vss-rag-nemoclaw/
 | `nvcr.io/nim/nvidia/nemotron-3-nano:1` (VSS local LLM NIM) | **not run in the lab** | the VSS 3.2.1 release lists it as the local LLM NIM; in the lab the VSS LLM role goes to the shared off-VM endpoint — the ":30081 must be absent" check applies (user-supplied from the VSS 3.2.1 release's compose, 2026-09-02) |
 | `docker.elastic.co/elasticsearch/elasticsearch:9.3.0` | pulled at prep | the shared Elasticsearch of both stacks (counted once in the footprint) — user-supplied from the RAG repo, 2026-09-02; **corrects the earlier recorded expected value "0.18.0"** (§8 item 4) |
 | VSS infra: `confluentinc/cp-kafka:8.2.0`, `redis:8.6.2-alpine`, Arize Phoenix `14.15.0` | pulled at prep | the VSS 3.2.1 release's internal infrastructure — exact images user-supplied from the release compose, 2026-09-02; recorded for `prep-log.md` verification |
-| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (expected image `nvcr.io/nim/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:1.7.0-variant`) | shared off-VM endpoint | the one shared LLM for all three LLM roles (sizing decision); the expected model image is user-supplied from the RAG v2.6.2 `nims.yaml`, 2026-09-02 — a platform-side verification target (the endpoint is pre-provisioned — §8 item 20) |
+| `NVIDIA/Nemotron-3.5-Lightning-30B-A3B` at `https://model.delllabs.local/api/nemotron35/v1` | shared off-VM endpoint | the one shared LLM for all three LLM roles (sizing decision); model ID and endpoint owner-confirmed 2026-09-07 — supersedes the expected model image recorded 2026-09-02 from the RAG v2.6.2 `nims.yaml` — a platform-side verification target (the endpoint is pre-provisioned — §8 item 20) |
 
 ## Start-order script contract
 

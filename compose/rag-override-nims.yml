@@ -1,0 +1,16 @@
+# compose/rag-override-nims.yml — lab-owned port override applied via -f on
+# deploy/compose/nims.yaml (20-start.sh STEP 4). ONE service: a compose
+# override may only declare services that exist in ITS base file — declaring
+# rag-frontend here (which nims.yaml doesn't know) creates a phantom service
+# with no image/build and the merged project is rejected.
+#
+# page-elements publishes 8000/8001/8002 in the standalone blueprint;
+# host :8000 is owned by the VSS agent in this lab (2026-09-07 dry-run:
+# "address already in use" aborted the whole nims up — prep-log finding).
+# Nothing in the lab contract consumes page-elements' host ports: rag-server
+# reaches it by container name over the nvidia-rag network.
+# ports uses !override: compose merge treats a plain empty `ports: []` as a
+# no-op (the base file's list survives), so only the tag CLEARS it.
+services:
+  page-elements:
+    ports: !override []

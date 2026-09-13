@@ -26,12 +26,28 @@ if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
     # shellcheck disable=SC1091
     . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
 fi
-command -v openclaw >/dev/null 2>&1 \
-    || fail "openclaw CLI not on PATH (run scripts/prep/40-nemoclaw.sh; source nvm.sh if it installed via nvm)"
-STATUS_OUT=$(openclaw nemoclaw status 2>&1) || fail "openclaw nemoclaw status failed (see state/nemoclaw-init.log)"
-echo "$STATUS_OUT" | grep -qF "auth-shim:8080" \
-    || fail "status does not show the custom endpoint auth-shim:8080 (the NemoClaw model is not the shared Nano Omni — 40-nemoclaw gate)"
-echo "NemoClaw sandbox: custom endpoint + Nano Omni model active"
+# the host nemoclaw CLI: the nvm node bin may carry it (40-nemoclaw's
+# bootstrap); the pinned install is $HOME/.local/bin/nemoclaw. openclaw
+# lives INSIDE the sandbox — never on the host.
+NEMO_BIN="$(command -v nemoclaw || true)"
+[ -n "$NEMO_BIN" ] || NEMO_BIN="$HOME/.local/bin/nemoclaw"
+[ -x "$NEMO_BIN" ] \
+    || fail "nemoclaw CLI not found (run scripts/prep/40-nemoclaw.sh — it installs $HOME/.local/bin/nemoclaw)"
+# the gateway port contract (config/nemoclaw.env): the CLI's default is
+# 8080 — the auth-shim's docker-proxy port — so the call must carry the
+# lab's port or it fails with "multiple listeners" (recorded collision).
+if [ -f "$REPO_ROOT/config/nemoclaw.env" ]; then
+    # shellcheck disable=SC1091
+    set -a; . "$REPO_ROOT/config/nemoclaw.env"; set +a
+fi
+# host-side status (the openclaw box is sandbox-internal; the host CLI
+# auto-starts the gateway if it is down — the designed session-start path).
+STATUS_OUT=$(NEMOCLAW_GATEWAY_PORT="${NEMOCLAW_GATEWAY_PORT:-8085}" "$NEMO_BIN" demo status 2>&1) || fail "nemoclaw demo status failed (see state/nemoclaw-init.log)"
+echo "$STATUS_OUT" | grep -qF "compatible-endpoint" \
+    || fail "status does not show Provider: compatible-endpoint (the NemoClaw model is not the custom endpoint — 40-nemoclaw gate)"
+echo "$STATUS_OUT" | grep -qF "Nemotron-3.5-Lightning-30B-A3B" \
+    || fail "status does not show the shared Nemotron-3.5-Lightning model (40-nemoclaw gate)"
+echo "NemoClaw sandbox: custom endpoint + Nemotron-3.5-Lightning model active"
 
 # the anomaly clip id (beat 2's alert) — the <VIDEO_NAME> in the instruction
 VIDEO_NAME="<ANOMALY_CLIP>"
@@ -63,10 +79,13 @@ PY
     fi
 fi
 
-# the OpenClaw UI URL: the installer prints it (recorded at prep in
-# prep-log.md); the dashboard port-forward default is 18789.
-UI_URL=$(grep -Eo 'https?://[^ ]+' "$PREP_LOG" 2>/dev/null | grep -E ':(18789|[0-9]{4,5})/' | tail -1 || true)
-[ -n "$UI_URL" ] || UI_URL="http://localhost:${DASHBOARD_PORT} (dashboard port-forward default — the installer's recorded URL, if different, is in prep-log.md)"
+# the OpenClaw UI URL: the dashboard port-forward binds 127.0.0.1; the
+# port was recorded at prep (40-nemoclaw logs "dashboard port-forward: <port>").
+# (The old heuristic grepped ANY url-with-port from prep-log — the NemoClaw
+# section's auth-shim:8080 reference made that match the wrong URL.)
+DASH_PORT="$(grep -Eo 'dashboard port-forward: [0-9]+' "$PREP_LOG" 2>/dev/null | grep -Eo '[0-9]+' | tail -1)"
+[ -n "${DASH_PORT:-}" ] || DASH_PORT="$DASHBOARD_PORT"
+UI_URL="http://127.0.0.1:${DASH_PORT}/"
 
 echo ""
 echo "== beats 3-4 procedure =="

@@ -65,13 +65,13 @@ This module is the orientation pass: ten quick checks around one question — is
 
 	`curl -s http://localhost:8080/v1/models -H "Authorization: Bearer dummy"`
 
-   You should see a JSON model list (an `object: list` with a `data` array). The exact list depends on the shared endpoint, but it must include `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`:
+   You should see a JSON model list (an `object: list` with a `data` array). The exact list depends on the shared endpoint, but it must include `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4`:
 
    ```
-   {"object":"list","data":[{"id":"nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", ...}]}
+   {"object":"list","data":[{"id":"nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4", ...}]}
    ```
 
-   The id `nemotron-3-nano-omni-30b-a3b-reasoning` is the shared endpoint's model — not a local NIM. Remember that: it is the model NemoClaw runs on in Module 4.
+   That id is the shared endpoint's model — the NVFP4 deployment of Nemotron-3.5-Lightning-30B-A3B — not a local NIM. Remember it: it is the model NemoClaw runs on in Module 4.
 
 3. Verify the VSS agent (the UI + API you work in for Modules 2 and 3):
 
@@ -115,7 +115,7 @@ This module is the orientation pass: ten quick checks around one question — is
 
 	`nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader`
 
-   You should see roughly 70 GB used of about 97871 MiB total. These two numbers are the co-residency budget: if you ever see 8 or more compute processes, a local LLM NIM has started — the generation model is the shared endpoint, and it never runs locally.
+   You should see roughly 75 GB used of about 96256 MiB total (the H100). These two numbers are the co-residency budget: if you ever see 8 or more compute processes, a local LLM NIM has started — the generation model is the shared endpoint, and it never runs locally.
 
 9. Confirm that invariant directly — nothing should listen on the local LLM NIM port:
 
@@ -133,19 +133,19 @@ This module is the orientation pass: ten quick checks around one question — is
 
 11. Open the OpenClaw UI at `http://localhost:18789` (or the port recorded in the prep log) and confirm NemoClaw's model from the shell:
 
-	`openclaw nemoclaw status --json | jq -r '.model // "unavailable"'`
+	`~/.local/bin/nemoclaw demo status | grep "Model:"`
 
    You should see:
 
    ```
-   nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+   Model:    nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
    ```
 
    That is the shared endpoint's model through the auth-shim — the same id you saw in step 2, which is exactly right: NemoClaw uses the custom endpoint, not a local NIM.
 
    << INSERT SCREENSHOT: OpenClaw UI with the NemoClaw session ready (the beats 3-4 surface) >>
 
-   > ✅ **Checkpoint:** Every endpoint probe (8080, 8000, 38111, 8018, 8081, 8090) returned 200; `nvidia-smi` shows 7 GPU compute processes with roughly 70 GB of 96 GB committed; nothing listens on `:30081`; the mock CMMS work-order list is empty and the notification feed has no entries; and NemoClaw reports the shared endpoint model `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`.
+   > ✅ **Checkpoint:** Every endpoint probe (8080, 8000, 38111, 8018, 8081, 8090) returned 200; `nvidia-smi` shows 7 GPU compute processes with roughly 75 GB of ~94 GB committed; nothing listens on `:30081`; the mock CMMS work-order list is empty and the notification feed has no entries; and NemoClaw reports the shared endpoint model `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4`.
 
 [Back to top](#table-of-contents)
 
@@ -241,7 +241,7 @@ This module is the alert. Same pipeline, same UI, one different clip: this segme
 
 This is the heart of the lab. From this module until Module 5, the only human input is four prompt answers — after that, every step is the agent's work, shown on screen as it happens. You can point at the agent's visible tool calls and retrieved documents as the evidence.
 
-1. From the lab repo checkout on the VM, run the agent-kickoff helper. It verifies that NemoClaw is on the custom endpoint with the Nano Omni model, prints the OpenClaw UI URL, and prints the one instruction you will paste. HITL is interactive, so the script prints and you type:
+1. From the lab repo checkout on the VM, run the agent-kickoff helper. It verifies that NemoClaw is on the custom endpoint with the Nemotron-3.5-Lightning model, prints the OpenClaw UI URL, and prints the one instruction you will paste. HITL is interactive, so the script prints and you type:
 
 	`bash scripts/demo/03-agent-kickoff.sh`
 
@@ -249,10 +249,10 @@ This is the heart of the lab. From this module until Module 5, the only human in
 
    ```
    == preconditions ==
-   NemoClaw sandbox: custom endpoint + Nano Omni model active
+   NemoClaw sandbox: custom endpoint + Nemotron-3.5-Lightning model active
 
    == beats 3-4 procedure ==
-   1. Open the OpenClaw UI:  http://localhost:18789 (dashboard port-forward default — the installer's recorded URL, if different, is in prep-log.md)
+   1. Open the OpenClaw UI:  http://127.0.0.1:18789/
    2. Start a fresh session (/new) and paste EXACTLY this one instruction:
 
         I want to generate a video summary report for clip-anomaly-01.
@@ -408,7 +408,7 @@ In this lab you ran a video-surveillance pipeline end to end and watched the age
 - **Closed loop** — the agent filed the work order into the CMMS (the list that was empty for three modules) and delivered the in-app notification, verifiable through the system's own API.
 - **Triage** — in the optional Module 6, the agent chose a monitoring note on the second anomaly, and the work-order list stayed put.
 
-The architecture decisions you saw working: one shared off-VM LLM endpoint (through the auth-shim) serving all three LLM roles so the GPU stays free for video understanding; seven models co-resident on one 96 GB GPU at about 70 GB; a local VLM doing the slow, valuable video work; and retrieval-grounded reasoning that turns an alert into a cited, filed, notified work order.
+The architecture decisions you saw working: one shared off-VM LLM endpoint (through the auth-shim) serving all three LLM roles so the GPU stays free for video understanding; seven models co-resident on one ~94 GB GPU at about 75 GB; a local VLM doing the slow, valuable video work; and retrieval-grounded reasoning that turns an alert into a cited, filed, notified work order.
 
 That is the pattern the service blueprint generalizes: detection is the cheap part; the agentic triage-and-file loop is what takes minutes of human attention per alert off the critical path.
 

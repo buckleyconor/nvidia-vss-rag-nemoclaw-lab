@@ -5,7 +5,8 @@
 # Both substituted values come from the host environment at start
 # (instructor's lab.env — M5 20-start.sh wires --env-file):
 #   SHARED_API_KEY      — secret (04: never in the repo)
-#   SHARED_ENDPOINT_URL — non-secret upstream address (08 item 36)
+#   SHARED_ENDPOINT_URL — non-secret upstream address (08 item 36; the
+#   endpoint's prefix before /v1 — current value in nginx.conf.template)
 #
 # Substitution mechanism (build doc §5): the nginx:*-alpine entrypoint runs
 # envsubst over /etc/nginx/templates/*.template at container start, using

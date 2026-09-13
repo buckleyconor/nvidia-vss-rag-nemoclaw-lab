@@ -1,0 +1,15 @@
+# compose/rag-override-ingestor.yml — lab-owned port override applied via
+# -f on deploy/compose/docker-compose-ingestor-server.yaml (20-start.sh
+# STEP 4). ONE service per base file (a phantom service with no image/build
+# makes the merged project invalid).
+#
+# The ingestor's internal redis publishes host 6379 in the standalone
+# blueprint; host :6379 is owned by the VSS stack's Redis in this lab
+# (2026-09-07 dry-run: "address already in use" on compose-redis-1).
+# ingestor-server reaches its redis by SERVICE name over its own compose
+# network — the host binding is dropped.
+# ports uses !override: compose merge treats a plain empty `ports: []` as a
+# no-op (the base file's list survives), so only the tag CLEARS it.
+services:
+  redis:
+    ports: !override []

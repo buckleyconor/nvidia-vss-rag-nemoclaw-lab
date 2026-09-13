@@ -6,6 +6,10 @@
 #
 #   VSS v3.2.1 -> ~/vss-public   (09; agent image VSS_AGENT_VERSION=3.2.1)
 #   RAG v2.6.2 -> /data/rag      (09; no fallback remains — 08 item 3)
+#   NemoClaw v0.0.118 -> ~/NemoClaw (01 pin; the VSS init_nemoclaw.sh runs
+#     <dir>/install.sh from there — 2026-09-10 dry-run: "install.sh is not
+#     available" without the checkout; build doc 9.1's "one command" claim
+#     presumes it exists)
 #
 # The resolved commit SHAs, the actual LVS .env path (it moves between
 # releases — 02), and the vendor files the later scripts rely on are
@@ -19,6 +23,9 @@ VSS_URL="https://github.com/NVIDIA-AI-Blueprints/video-search-and-summarization.
 RAG_URL="https://github.com/NVIDIA-AI-Blueprints/rag.git"
 VSS_TAG="v3.2.1"
 RAG_TAG="v2.6.2"
+NEMOCLAW_DIR="${NEMOCLAW_DIR:-$HOME/NemoClaw}"
+NEMOCLAW_URL="https://github.com/NVIDIA/NemoClaw.git"
+NEMOCLAW_TAG="v0.0.118"
 
 PREP_LOG="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/prep-log.md"
 log() { printf '%s\n' "$*" >> "$PREP_LOG"; }
@@ -55,6 +62,12 @@ VSS_SHA=$(clone_pinned "$VSS_DIR" "$VSS_URL" "$VSS_TAG")
 echo "== RAG $RAG_TAG -> $RAG_DIR =="
 RAG_SHA=$(clone_pinned "$RAG_DIR" "$RAG_URL" "$RAG_TAG")
 
+echo "== NemoClaw $NEMOCLAW_TAG -> $NEMOCLAW_DIR =="
+# the vendor's init_nemoclaw.sh (VSS repo) defaults NEMOCLAW_REPO_DIR to
+# $HOME/NemoClaw and runs ./install.sh from there — the checkout is a
+# pre-condition of the 40-nemoclaw.sh step (2026-09-10 dry-run finding).
+NEMOCLAW_SHA=$(clone_pinned "$NEMOCLAW_DIR" "$NEMOCLAW_URL" "$NEMOCLAW_TAG")
+
 echo "== recording the vendor facts the later scripts rely on =="
 
 # VSS: the LVS .env path MOVES between releases (02/08) — locate it now and
@@ -67,6 +80,8 @@ log "- VSS LVS .env (actual at $VSS_TAG): $LVS_ENV"
     || fail "dev-profile.sh not found in $VSS_DIR (20-start.sh step 2 needs it)"
 [ -f "$VSS_DIR/deploy/docker/scripts/nemoclaw/init_nemoclaw.sh" ] \
     || fail "init_nemoclaw.sh not found in $VSS_DIR (40-nemoclaw.sh needs it)"
+[ -f "$NEMOCLAW_DIR/install.sh" ] \
+    || fail "NemoClaw install.sh not found in $NEMOCLAW_DIR (init_nemoclaw.sh runs it from the checkout)"
 [ -d "$VSS_DIR/deploy/docker/developer-profiles/dev-profile-lvs/vss-agent/configs" ] \
     || fail "VSS vss-agent configs dir not found (20-start.sh places config_rag.yml there)"
 log "- VSS: dev-profile.sh, init_nemoclaw.sh, vss-agent configs dir all present at $VSS_TAG"
@@ -100,4 +115,4 @@ ES_IMAGE="${ES_IMAGE:-<not found — record as a prep finding>}"
 log "- RAG: in-tree docs + the four compose files used by 20-start.sh/25-ingest present at $RAG_TAG"
 log "- RAG Elasticsearch (actual at $RAG_TAG): $ES_IMAGE (expected docker.elastic.co/elasticsearch/elasticsearch:9.3.0 — 09; a mismatch is a prep finding)"
 
-echo "10-clone-blueprints: PASS — SHAs recorded in $(basename "$PREP_LOG") (VSS $VSS_SHA, RAG $RAG_SHA)"
+echo "10-clone-blueprints: PASS — SHAs recorded in $(basename "$PREP_LOG") (VSS $VSS_SHA, RAG $RAG_SHA, NemoClaw $NEMOCLAW_SHA)"

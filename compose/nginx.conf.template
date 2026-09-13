@@ -2,7 +2,15 @@
 # 03/04). envsubst (docker-compose.shim.yml) substitutes at container
 # start: ${SHARED_API_KEY} (secret — the shared-endpoint key) and
 # ${SHARED_ENDPOINT_URL} (non-secret — the shared off-VM inference
-# endpoint, full URL incl. scheme; 08 item 36).
+# endpoint's upstream prefix, full URL incl. scheme; 08 item 36).
+# Current endpoint: OpenAI-compatible base URL
+# https://model.delllabs.local/api/nemotron35/v1 — the lab.env value is
+# https://model.delllabs.local/api/nemotron35/ (the prefix BEFORE /v1,
+# trailing slash included): `location /` + `proxy_pass <URI>` replaces the
+# matched location prefix (/) with the proxy_pass URI and appends the rest
+# of the client path, so the clients' /v1/... requests land on the
+# upstream's /api/nemotron35/v1/.... The full base URL here would double-map
+# them to /api/nemotron35/v1v1/....
 #
 # Key translation (04): the caller's Authorization header is stripped and
 # the shared-endpoint x-api-key substituted. nginx default access log is
@@ -21,5 +29,13 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_read_timeout 300s;
+        # SNI for the upstream TLS handshake. nginx's proxy_ssl_server_name
+        # is OFF by default, so without this the ClientHello carries no SNI
+        # and the shared gateway (multi-name, Vault-CA-issued cert) answers
+        # alert 112 "unrecognized name" — every proxied request 502s while
+        # a host curl (which sends SNI) works. ON makes nginx send the host
+        # part of proxy_pass (model.delllabs.local). 2026-09-07 dev-VM
+        # failure mode: 502 + "tlsv1 unrecognized name" in auth-shim logs.
+        proxy_ssl_server_name on;
     }
 }

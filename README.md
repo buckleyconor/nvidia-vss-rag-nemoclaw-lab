@@ -3,7 +3,8 @@
 Single-VM demo of an agentic video-analytics maintenance loop: **NVIDIA VSS**
 (video understanding + alerting) + **Enterprise RAG** (retrieval-grounded
 diagnosis) + **NemoClaw** (the agentic kick-off), filed into a mock CMMS
-(work orders + notifications). One learner, one RTX PRO 6000 96 GB GPU, no
+(work orders + notifications). One learner, one H100 vGPU partition (~94 GB;
+SKU H100L-94C), no
 concurrency — the LLM roles run against a shared off-VM endpoint through a
 local auth-shim; only the VLM + six retriever NIMs run locally.
 
@@ -15,8 +16,8 @@ This repo is the single source for the lab: build code **and** the lab guide.
 | --- | --- |
 | `spec/` | The ten build documents — source of truth for the build track |
 | `mock-wo/` | The mock CMMS service (FastAPI + SQLite; work orders, notifications, notes, small UI) |
-| `config/` | Environment contract files (`*.env.example` templates + `rag.env`) |
-| `scripts/prep/` | The environment bring-up chain: `00 → 10 → 20 → 25 → 30 → 40` (instructor-run on the build VM) |
+| `config/` | Environment contract files: per-VM `lvs.env` (instructor-injected, gitignored) + lab-owned `rag.env` / `vlm.env` / `nemoclaw.env` (+ `*.env.example` templates) |
+| `scripts/prep/` | The environment bring-up chain: `00 → 10 → 20 (finishes by arming 50-resilience.sh) → 25 → 30 → 40` (instructor-run on the build VM) |
 | `scripts/demo/` | Session helpers the learner runs: `01-baseline`, `02-anomaly`, `03-agent-kickoff` |
 | `scripts/test/` | Dev gate (`run-dev-tests.sh`) + container smoke (`container-smoke.sh`) |
 | `fixtures/` | Fixture manifests + provisional fixtures (video, corpus, rag-index) — structure-gated, content curated at prep (ADR-004) |

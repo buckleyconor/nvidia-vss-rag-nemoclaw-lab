@@ -2,9 +2,9 @@
 target_platforms:
   - vcd
 concurrency_target: 10
-deployment_target: 'vCD single Ubuntu 24.04 VM, Docker Compose, 1x RTX PRO 6000 96 GB (full PCIe passthrough), shared off-VM LLM endpoint'
+deployment_target: 'vCD single Ubuntu 24.04 VM, Docker Compose, 1x H100 ~94 GB (vGPU partition), shared off-VM LLM endpoint'
 demo_footprint:
-  gpu: '1x RTX PRO 6000 96 GB (full PCIe passthrough, not vGPU)'
+  gpu: '1x H100 ~94 GB (vGPU partition; SKU H100L-94C — learner SKU, platform-confirmed 2026-09-07)'
   vram_gb: 96
   vcpu: 32
   ram_gb: 256
@@ -46,7 +46,7 @@ runs the 120B-class RAG generation model, the 9B VSS LLM, and NemoClaw's
 default model locally at multi-GPU / cluster scale (the partner deployment
 cited in the build document ran on a Run:AI cluster). This lab moves all
 three LLM roles onto one shared off-VM 30B endpoint and keeps only the
-8B-class VLM and the six 1B-class retriever NIMs on a single 96 GB card, in a
+8B-class VLM and the six 1B-class retriever NIMs on a single ~94 GB card, in a
 single-user single VM. That is a deliberate density decision for the lab, not
 a production pattern. The VLM and retriever NIMs are the same models
 production runs locally, so the detection and retrieval halves of the lab are
@@ -55,7 +55,7 @@ representative; the reasoning/generation half is not.
 ## Minimal demo footprint
 
 What one learner instance actually needs. One vCD VM: Ubuntu 24.04, Docker
-Compose, one full 96 GB GPU. RAM and disk rows are the build document's
+Compose, one ~94 GB GPU. RAM and disk rows are the build document's
 per-VM allocations (approximate — see Open questions & assumptions). The
 mock work-order service is the only component not named in the build
 document; it is estimated and flagged.
@@ -68,9 +68,9 @@ document; it is estimated and flagged.
 | auth-shim | — | — | negligible (<1 GB) | — | `nginx:1.27-alpine` on :8080; translates `Authorization: Bearer` → `x-api-key` for the shared endpoint; one tiny container per VM, sized once per instance |
 | Mock work-order service (CMMS stand-in) | — | — | ~1–2 GB (estimate) | ~1–5 GB (estimate) | Beat 4's reveal target: a small CPU-only Docker web app the agent POSTs to; tech, ports, and data model open (plan stage). The learner's work orders are per-instance state |
 | Host OS, Docker, page cache, container images | — | — | ~16 GB | ~600 GB (`/var/lib/docker`) | `/dev/shm` 32 GB is RAM-backed tmpfs on top of the RAM budget |
-| **Total (committed)** | **~70 GB of 96 GB (~26 GB headroom), 7 compute processes** | **32** | **~224 GB of 256 GB (+32 GB /dev/shm)** | **~1650 GB of 2048 GB (~350–400 GB headroom)** | Steady state after full start sequence |
+| **Total (committed)** | **~70 GB of ~94 GB (~24 GB headroom), 7 compute processes** | **32** | **~224 GB of 256 GB (+32 GB /dev/shm)** | **~1650 GB of 2048 GB (~350–400 GB headroom)** | Steady state after full start sequence |
 
-**Per-instance total:** 1× RTX PRO 6000 96 GB (~70 GB committed, ~26 GB
+**Per-instance total:** 1× H100 ~94 GB (~70 GB committed, ~24 GB
 headroom), 32 vCPU, 256 GB RAM (~224 GB committed + 32 GB /dev/shm), 2 TB
 NVMe (~1650 GB committed).
 
@@ -99,12 +99,12 @@ keeps the reveal convincing.
 | RAG generation LLM (aha path) | `nemotron-3-super-120b-a12b`, local, multi-GPU cluster scale | `nemotron-3-nano-omni-30b-a3b-reasoning`, off-VM shared endpoint via `nginx:1.27-alpine` auth-shim | The beats show agent behaviour (visible tool calls, retrieved documents, filed work order), not generation quality; measured LLM fusion is ~1.24 s of a ~250 s run (~1.0%). 30B omni is listed among the RAG blueprint's optional NIMs and VSS documents remote OpenAI-compatible endpoints — the configuration stays inside the product-documented envelope | A model far below 30B-class: multi-step tool-calling reasoning degrades and beats 3–4 lose the visible grounded reasoning that is the evidence for the reveal. Back to local: the multi-GPU budget returns and 1-card / 1-VM density dies |
 | VSS LLM (aha path) | `nemotron-nano-9b-v2`, local on the VSS GPU | Same shared 30B endpoint (off-VM) | Latency-neutral (~1.24 s measured fusion share) and a documented VSS remote-LLM configuration | Same quality risk as the row above. Returning to local puts a 9B-class model and its KV budget on a card already ~70 GB committed (estimate — unmeasured) and erodes the 26 GB headroom |
 | NemoClaw model (aha path) | Default provider model (size not recorded) | Same shared 30B endpoint (`NEMOCLAW_PROVIDER=custom`) | The agent must reliably drive the `vss-generate-video-report-rag` skill and the HITL kick-off; a 30B-class omni model serves that | A weaker model: the agent fails to complete the skill unaided → beat 4 needs a human nudge, and the aha (nothing between the learner's one instruction and the work order) breaks |
-| Cluster → single VM | Run:AI multi-GPU cluster (partner reference) | 1× Ubuntu 24.04 vCD VM, Docker Compose | No beat is about topology or distribution; success criterion 4 makes the footprint itself part of the lesson — one VM, one 96 GB GPU, a pool of ten learners | Nothing breaks below one VM. The risk runs the other way: under-sizing the VM (rows below) |
+| Cluster → single VM | Run:AI multi-GPU cluster (partner reference) | 1× Ubuntu 24.04 vCD VM, Docker Compose | No beat is about topology or distribution; success criterion 4 makes the footprint itself part of the lesson — one VM, one ~94 GB GPU, a pool of ten learners | Nothing breaks below one VM. The risk runs the other way: under-sizing the VM (rows below) |
 | Zero local GPU for VLM (build doc "future work") | Local VLM verified | **Declined — VLM stays local** | Not a reduction made; recorded so the next person does not make it | The VLM must profile an empty GPU first; only the default local VLM is verified; LVS prompts and alert verification are tuned around it. Remote VLM is untested → beat 2's alert identity/quality breaks. Aha path: do not reduce |
 | VLM budget (aha path) | Default `gpu_memory_utilization` 0.9 (~86 GB) — nothing else would start | 0.40 → ~38 GB, with `--max-model-len 32768` (native 256K) and `--max-num-seqs 4` | Single learner per VM (zero in-VM concurrency), so no batch slots to reserve; VSS chunks are seconds long, so cutting the KV-cache term ~an order of magnitude is free | Below ~0.35 fraction / 16384 context / 2 seqs: long-chunk captioning OOMs or fails with "To serve at least one request"; alert quality on the anomaly clip (beat 2, feeding the aha) degrades. Aha path: do not cut further |
 | RAG retriever NIMs (6) (aha path) | 6 local NIMs (same as production) | 6 local NIMs, Triton/TRT, default allocation (~28 GB) | Not reduced — the retrieved documents are the reveal's evidence, and 1B-class NIMs are already the small end of the stack | Dropping an extraction NIM (e.g. `graphic-elements`): retrieval quality degrades for the corpus content types it covers and the "which documents were retrieved" evidence weakens. Open risk: a documented 0.10 `gpu_memory_utilization` floor, if it applies to user-set values, would push a 9.6 GB floor per NIM and eat the 26 GB headroom — must be measured before the budget is trusted |
 | Vector DB | GPU-accelerated Milvus alternative exists | Elasticsearch on CPU (blueprint default, kept deliberately) | The reveal is retrieval quality over a small corpus, not vector-search throughput | GPU Milvus costs a second GPU budget and kills 1-card density. Dropping the vector DB entirely kills beat 3 — no RAG hits, no evidence, no aha |
-| In-VM concurrency | Production serves many users/streams | 1 learner per VM, zero in-VM concurrency (the build document's own design) | The pool provides concurrency: 10 VMs = 10 learners, with VM-level isolation | 2 learners per VM: vRAM ~70 GB × 2 > 96 GB and decode buffers double → mid-session OOM. The card cannot be shared — one instance per 96 GB card |
+| In-VM concurrency | Production serves many users/streams | 1 learner per VM, zero in-VM concurrency (the build document's own design) | The pool provides concurrency: 10 VMs = 10 learners, with VM-level isolation | 2 learners per VM: vRAM ~70 GB × 2 > ~94 GB and decode buffers double → mid-session OOM. The card cannot be shared — one instance per card |
 | Corpus and footage | Production OEM manuals + drone/borescope/thermal inspection video | Curated small corpus + short pre-recorded clips (normal-state for beat 1, one anomaly segment for beat 2), index pre-built before the session | Indexing is a non-goal (its own lab exists); a small chosen corpus makes the retrieval hits legible on screen | A corpus that does not cover the anomaly's manual/log/schedule entries → RAG retrieval returns nothing relevant → the reveal has no evidence. Clips much longer than the test clip: ~250 s analysis at 92% VLM time multiplied by length blows session time |
 | Downstream action target (aha path) | Partner: Maximo work orders (blog: Jira) | Small mock Docker web app the agent POSTs to (tech/ports/data model open) | The concept's aha is "a work order appears in the mock CMMS" — the mock is the beat, and CMMS internals are an explicit non-goal | A mock that does not visibly render a work order plus the notification: success criterion 2 breaks. Real Jira/Maximo: tenant and credentials setup outside lab scope, and the reveal would depend on external uptime |
 | RAM | (production per-node sizing not recorded) | 256 GB recommended (documented minimum 192 GB) | "192 GB will run. 256 GB means you debug the demo, not the memory" | Below 192 GB: VSS decode / Elasticsearch OOM. At 192 GB: ~224 GB committed + 32 GB /dev/shm exceeds RAM unless decode buffers come in lighter (untested). Provision the pool at 256 GB |
@@ -114,12 +114,12 @@ keeps the reveal convincing.
 
 ## Density
 
-- **Per-instance footprint:** 1× RTX PRO 6000 96 GB (~70 GB committed,
-  ~26 GB headroom), 32 vCPU, 256 GB RAM (~224 GB committed + 32 GB /dev/shm),
+- **Per-instance footprint:** 1× H100 ~94 GB (~70 GB committed,
+  ~24 GB headroom), 32 vCPU, 256 GB RAM (~224 GB committed + 32 GB /dev/shm),
   2048 GB storage (~1650 GB committed).
 - **Concurrency target:** 10 simultaneous learner instances — one learner per
   VM, 10-VM vCD pool, hard cap ("we will not exceed this").
-- **Aggregate at N=10:** 10× RTX PRO 6000 96 GB (700 GB committed across 10
+- **Aggregate at N=10:** 10× H100 ~94 GB (700 GB committed across 10
   cards), 320 vCPU, 2560 GB RAM (2240 GB committed + 320 GB /dev/shm),
   20480 GB storage (~16.5 TB committed).
 - **Shared vs per-tenant:**
@@ -139,15 +139,15 @@ keeps the reveal convincing.
     weights pre-baked. Flagged assumption: this file assumes no shared
     datastore; if one is mounted, the 2 TB per-VM budget drops accordingly.
 - **Headroom / limits:** vRAM on the card is the binding constraint on
-  co-residency — one instance per 96 GB card: a second instance would need
-  another ~70 GB but only ~26 GB of headroom exists, so the card cannot be
+  co-residency — one instance per card: a second instance would need
+  another ~70 GB but only ~24 GB of headroom exists, so the card cannot be
   split and N ≤ number of cards. The 10-VM pool (user-set hard cap) is the
   binding constraint on N: at N=10 the pool is fully consumed. What runs out
   first at N=10: outside the VM, the shared endpoint's capacity for 10
   concurrent lab sessions is unknown and unmeasured — it serves the VSS LLM
   role, RAG generation, and all 10 NemoClaw sessions, making it the most
   likely first failure outside the VM. Inside the VM nothing breaks at
-  N=1/VM (single-user by design; the ~26 GB headroom absorbs the NIM-floor
+  N=1/VM (single-user by design; the ~24 GB headroom absorbs the NIM-floor
   risk if it materialises).
 
 ## Software stack
@@ -191,8 +191,10 @@ Kubernetes**. Why: VSS ships Compose-only, and its
 OpenShift) is the documented future graduation path, not this lab. Platform
 requirements already known to be a problem, for `/hol-platform-check`:
 
-1. Full PCIe passthrough of the RTX PRO 6000 96 GB, **not vGPU** — NIM probes
-   the device directly for profile selection.
+1. vGPU H100 partition with the full ~94 GB (96256 MiB) visible to the VM —
+   platform-confirmed 2026-09-07: learner SKU is H100L-94C with the full
+   96256 MiB visible (dev-VM observation 2026-09-07, driver 580.105.08);
+   NIM profile selection is GPU-dependent — re-verify at prep (L5).
 2. `/dev/shm` 32 GB (Docker `default-shm-size: 32G`).
 3. `vm.max_map_count=262144` — Elasticsearch refuses to start without it.
 4. 10-VM pool with a hard cap of 10 concurrent learners.
@@ -209,7 +211,7 @@ facts come from the local build document.
 
 - All vRAM figures are the build document's estimates, pending its Phase 2
   measurement: VLM ~38 GB (at 0.40 / 32768 / 4), six NIMs ~28 GB
-  (5+5+5+4+4+5 GB), CUDA contexts ~4 GB, ~70 GB committed / ~26 GB headroom.
+  (5+5+5+4+4+5 GB), CUDA contexts ~4 GB, ~70 GB committed / ~24 GB headroom.
   If the six NIMs measure over ~45 GB total, the VLM fraction must be cut
   before co-residency and this budget shifts.
 - The NIM 0.10 floor risk: whether the documented 0.10 minimum

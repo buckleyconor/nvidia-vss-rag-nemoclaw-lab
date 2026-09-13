@@ -6,14 +6,14 @@
 # Probes every lab endpoint, asserts the local LLM NIM (:30081) is ABSENT
 # (a running local LLM NIM is a misconfiguration signal — 02), and records
 # the nvidia-smi VRAM measurement to prep-log.md (the L5 checklist in 05
-# judges the numbers: VLM ~38 GB not ~86 GB; six NIMs; <= 80 GB total).
+# judges the numbers: VLM ~34 GB (0.40 pin, 08 item 39) not ~86 GB; six NIMs; <= 80 GB total).
 #
 # Exits non-zero on any probe failure.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RAG_DIR="${RAG_DIR:-/data/rag}"
-MODEL_ID="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+MODEL_ID="nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4" # 2026-09-07: served id (NVFP4 vLLM build) — see prep-log finding; owner-confirmed id open in spec/08
 PREP_LOG="$REPO_ROOT/prep-log.md"
 log() { printf '%s\n' "$*" >> "$PREP_LOG"; }
 fail() { echo "30-verify-stack: FAIL — $*" >&2; exit 1; }
@@ -97,7 +97,7 @@ if [ -n "${APPS_TABLE:-}" ]; then
         log "- compute app: $line"
     done <<< "$APPS_TABLE"
 fi
-log "  (L5 judgment, 05: VLM VRAM ~38 GB not ~86 GB; six NIMs; 7 compute"
+log "  (L5 judgment, 05: VLM VRAM ~34 GB (0.40 pin) not ~86 GB; six NIMs; 7 compute"
 log "   processes <= 80 GB total; this measurement is the evidence)"
 
 [ "$FAILURES" = "0" ] \

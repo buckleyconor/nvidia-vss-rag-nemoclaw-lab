@@ -71,12 +71,44 @@ fi
 
 echo "== 5b/5 compose projects validate (a service may not join an undeclared network) =="
 if command -v docker >/dev/null 2>&1; then
+    # rag-override-*.yml are NOT standalone projects: they are lab-owned
+    # !override fragments applied via -f on the RAG blueprint's base files
+    # at 20-start STEP 4. A service with only `ports: !override []` has no
+    # image/build, so standalone validation is structurally impossible;
+    # their contract is the MERGED project, validated below against the
+    # base (where the RAG clone exists).
     for f in compose/*.yml; do
+        case "$f" in
+            compose/rag-override-*.yml) continue ;;
+        esac
         SHARED_API_KEY=x SHARED_ENDPOINT_URL=http://u/v1 \
             docker compose -f "$f" config -q \
             || { echo "run-dev-tests: FAIL — $f is not a valid compose project" >&2; exit 1; }
         echo "compose config: $f ok"
     done
+    RAG_DIR="${RAG_DIR:-/data/rag}"
+    # override file | its base (relative to $RAG_DIR) — 20-start STEP 4
+    OVERRIDE_BASE="
+rag-override-ingestor.yml|deploy/compose/docker-compose-ingestor-server.yaml
+rag-override-nims.yml|deploy/compose/nims.yaml
+rag-override-rag-server.yml|deploy/compose/docker-compose-rag-server.yaml
+rag-override-vectordb.yml|deploy/compose/vectordb.yaml
+"
+    while IFS='|' read -r ov base; do
+        [ -n "${ov:-}" ] || continue
+        if [ ! -f "$RAG_DIR/$base" ]; then
+            echo "compose config: $ov skipped (RAG base $RAG_DIR/$base absent — the VM re-run covers it)"
+            continue
+        fi
+        [ -f config/rag.env ] && { set -a; . ./config/rag.env; set +a; }
+        # the bases interpolate secrets with :? guards (NGC_API_KEY is
+        # injected by 20-start from the lab key store); a dummy satisfies
+        # the guard — config -q prints nothing, so nothing is logged
+        SHARED_API_KEY=x SHARED_ENDPOINT_URL=http://u/v1 NGC_API_KEY=x \
+            docker compose -f "$RAG_DIR/$base" -f "compose/$ov" config -q \
+            || { echo "run-dev-tests: FAIL — compose/$ov does not merge cleanly onto $RAG_DIR/$base" >&2; exit 1; }
+        echo "compose config: $ov (merged on $base) ok"
+    done <<< "$OVERRIDE_BASE"
 else
     echo "docker CLI absent — compose validation skipped (the VM re-run covers it)"
 fi

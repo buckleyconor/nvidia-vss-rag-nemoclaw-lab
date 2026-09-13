@@ -1,0 +1,18 @@
+[Unit]
+Description=Lab stack health watch (probes + tiered self-heal)
+Documentation=file:///usr/local/lib/lab/health-watch.sh
+
+[Service]
+Type=oneshot
+# systemd does not set HOME for system services; the CLI resolves its
+# state dir and nvm bootstrap from HOME (root's — matches the install).
+Environment=HOME=/root
+# The script always exits 0 by design (a failing probe is data, not a
+# unit failure); stdout/stderr go to the journal AND /var/log/lab-health.log.
+# 2026-09-11: the NemoClaw leg can invoke the heal ladder, whose nuclear
+# tier (clean re-onboard) takes up to ~15 minutes — headroom accordingly.
+ExecStart=/usr/local/lib/lab/health-watch.sh
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

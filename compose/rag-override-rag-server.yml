@@ -1,0 +1,14 @@
+# compose/rag-override-rag-server.yml — lab-owned port override applied via
+# -f on deploy/compose/docker-compose-rag-server.yaml (20-start.sh STEP 4).
+# ONE service: an override may only declare services that exist in ITS base
+# file (a phantom service with no image/build makes the merged project
+# invalid).
+#
+# rag-frontend (the RAG blueprint's web UI) publishes 8090:3000 in the
+# standalone blueprint; host :8090 is owned by mock-wo in this lab. The
+# learner never uses the RAG web UI (they interact with the NemoClaw agent),
+# so the host binding is dropped — rag-frontend keeps running, reachable
+# by container name on nvidia-rag if it is ever needed.
+services:
+  rag-frontend:
+    ports: !override []   # plain `ports: []` is a no-op in compose merge

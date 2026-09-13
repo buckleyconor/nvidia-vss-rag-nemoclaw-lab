@@ -9,7 +9,7 @@ image_checklist:
   - 'OpenClaw UI with the NemoClaw session ready (the beats 3-4 surface)'
 success_criteria:
   - 'Every endpoint probe (8080, 8000, 38111, 8018, 8081, 8090) returns 200'
-  - 'nvidia-smi shows 7 GPU compute processes (the local VLM + six retriever NIMs) with ~70 GB of 96 GB committed'
+  - 'nvidia-smi shows 7 GPU compute processes (the local VLM + six retriever NIMs) with ~70 GB of ~94 GB committed'
   - 'Nothing listens on :30081 (the local LLM NIM must not be running — generation is remote via the shared endpoint)'
   - 'The mock CMMS work-order list is empty and the notification feed has no entries'
   - 'openclaw nemoclaw status reports the shared endpoint model nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
@@ -24,10 +24,10 @@ success_criteria:
 5. Verify the RT-VLM: `curl -s http://127.0.0.1:8018/v1/health/ready` — expected: 200. One line of why: the local 8B-class VLM (40% of the GPU) does the video understanding. — screenshot: no
 6. Verify the RAG server: `curl -s http://localhost:8081/v1/health` — expected: healthy. — screenshot: no
 7. Verify the mock CMMS: `curl -s http://localhost:8090/health` — expected: `{"status":"ok","db":"ok"}`. — screenshot: no
-8. Check GPU residency: `nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader` — expected: exactly 7 rows (the local VLM + six retriever NIMs); then `nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader` — expected: ~70 GB used of ~97871 MiB. One line of why: this is the co-residency budget the whole lab depends on. — screenshot: no
+8. Check GPU residency: `nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader` — expected: exactly 7 rows (the local VLM + six retriever NIMs); then `nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader` — expected: ~75 GB used of ~96256 MiB (measured 2026-09-10: 75365 MiB). One line of why: this is the co-residency budget the whole lab depends on. — screenshot: no
 9. Confirm the local LLM NIM is absent: `ss -ltn | grep :30081` — expected: no output. One line of why: a running local LLM NIM is a misconfiguration — the LLM is the shared endpoint, not a local model. — screenshot: no
 10. Open the mock CMMS in the browser at `http://localhost:8090`. — expected: the work-order list is EMPTY and the notification badge shows 0. This is the surface Module 5 will fill. — screenshot: yes (image_checklist 1)
-11. Open the OpenClaw UI at `http://localhost:18789` (or the port recorded in `prep-log.md` at prep) and run `openclaw nemoclaw status --json | jq -r '.model // "unavailable"'` — expected: `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (the custom endpoint model, not a local NIM). — screenshot: yes (image_checklist 2)
+11. Open the OpenClaw UI at `http://127.0.0.1:18789/` (the dashboard port-forward; the port recorded in `prep-log.md` at prep) and run `~/.local/bin/nemoclaw demo status | grep "Model:"` (the host CLI — openclaw lives inside the sandbox) — expected: `Model:    nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (the custom endpoint model, not a local NIM). — screenshot: yes (image_checklist 2)
 
 > Checkpoint placement: after step 2 (the shim serves the shared model — the environment works before the learner invests more time) and at step 11 (module success criteria verbatim).
 
@@ -46,13 +46,13 @@ Assumes: the full `lab-prep.md` verify state — the stack is up and healthy bef
 	`nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader`
 	`nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader`
 	`ss -ltn | grep :30081`
-	`openclaw nemoclaw status --json | jq -r '.model // "unavailable"'`
+	`~/.local/bin/nemoclaw demo status | grep "Model:"`
 
 ## Expected outputs (verbatim sample output where known)
 
 - `curl -s http://localhost:8090/health` → `{"status":"ok","db":"ok"}` (verbatim from the mock-wo build, M1/M2 — stable contract).
-- `curl -s http://localhost:8080/v1/models -H "Authorization: Bearer dummy"` → a JSON `data` array listing `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (the exact list depends on the shared endpoint; the lab asserts the model is present).
+- `curl -s http://localhost:8080/v1/models -H "Authorization: Bearer dummy"` → a JSON `data` array listing `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (the exact list depends on the shared endpoint; the lab asserts the model is present).
 - `ss -ltn | grep :30081` → (no output — the check passes by silence).
-- `openclaw nemoclaw status --json | jq -r '.model // "unavailable"'` → `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`.
-- The nvidia-smi outputs: 7 compute-app rows and ~70 GB/97871 MiB — the exact values are the prep-log.md measurements (the guide names the expected shape, not exact MiB).
+- `~/.local/bin/nemoclaw demo status | grep "Model:"` → `Model:    nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4`.
+- The nvidia-smi outputs: 7 compute-app rows and ~75 GB/96256 MiB (measured 2026-09-10: 75365 MiB) — the exact values are the prep-log.md measurements (the guide names the expected shape, not exact MiB).
 - The vendor endpoint bodies (:8000, :38111, :8018, :8081) are release-dependent — capture verbatim during the VM dry run (L5) and tighten the wording then.

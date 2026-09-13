@@ -13,7 +13,7 @@ milestones:
 `/hol-build` consumes the frontmatter above one milestone at a time; the
 prose explains the plan. Every `test` command is non-interactive,
 self-terminating, and runs **at the repo root on the aarch64 dev machine**
-(docker daemon available; **no lab GPU** — the RTX PRO 6000 is on the
+(docker daemon available; **no lab GPU** — the H100 is on the
 unreachable vCD VM). GPU/VM-dependent verification is NOT a milestone test:
 it is the six-item L5 checklist in `05-test-strategy.md`, run at environment
 prep / QA on the VM.

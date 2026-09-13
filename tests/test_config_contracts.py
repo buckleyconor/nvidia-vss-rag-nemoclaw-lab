@@ -122,7 +122,7 @@ def test_tc034_lvs_env_example():
     values = _env_lines(REPO / "config/lvs.env.example")
     assert values["MODE"] == "2d"
     assert values["BP_PROFILE"] == "bp_developer_lvs"
-    assert values["HARDWARE_PROFILE"] == "RTXPRO6000BW"
+    assert values["HARDWARE_PROFILE"] == "H100"  # 2026-09-07: learner VM is now a vGPU H100 (platform change; 10 c1, spec/08 item 31)
     assert values["VLM_MODE"] == "local_shared"
     assert values["VSS_AGENT_VERSION"] == "3.2.1"
     # the /v1 suffix is load-bearing (02)
@@ -137,31 +137,46 @@ def test_tc034_lvs_env_example():
 
 
 def test_tc034_no_real_key_material_in_repo():
-    # no `nvapi-…` value anywhere in the repo (04/TC-034). Scans every
-    # text file EXCEPT: .venv (pinned dependencies), spec/ and tests/
-    # (documentation/tests that quote the pattern itself), .git.
-    pattern = "nvapi-"
+    # No NGC API key VALUE in any file that could enter git (04/TC-034):
+    # tracked files + untracked-but-not-ignored files, exactly what
+    # `git status` would commit. The gitignored env files (config/*.env —
+    # the real, key-injected file per the 04 contract: "*.env gitignored,
+    # !*.env.example") are the designated on-disk secret store, and the
+    # gitignore contract is what protects them; this test guards the
+    # human-error class (a key value in a doc, script, or tracked state
+    # file). The pattern matches the key VALUE shape (long dash-separated
+    # material), not the bare prefix, so format documentation
+    # ("nvapi-…" placeholders) and 00-host-prep's key-type check
+    # (the 'nvapi-*' case glob) do not trip it (2026-09-10 dry-run: the
+    # old disk-wide bare-prefix scan tripped on both, and on the
+    # gitignored key store itself).
+    key_value = re.compile(r"nvapi-[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]{2,}){3,}")
+    listed = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+        cwd=REPO, capture_output=True, text=True, check=True,
+    ).stdout.splitlines()
     offenders = []
-    for path in REPO.rglob("*"):
+    for rel in listed:
+        path = REPO / rel
         if not path.is_file():
-            continue
-        rel = path.relative_to(REPO)
-        if rel.parts and rel.parts[0] in (".venv", "spec", "tests", ".git"):
             continue
         try:
             text = path.read_text()
         except (UnicodeDecodeError, OSError):
             continue  # binary
-        if pattern in text:
-            offenders.append(str(rel))
+        if key_value.search(text):
+            offenders.append(rel)
     assert not offenders, f"key-material pattern found in: {offenders}"
 
 
 def test_tc035_rag_env():
     values = _env_lines(REPO / "config/rag.env")
     assert values["APP_VECTORSTORE_NAME"] == "elasticsearch"
+    # 2026-09-07: the shared endpoint serves the NVFP4 build under this vLLM
+    # id (recorded reality, prep-log finding); the owner-confirmed id is
+    # open in spec/08.
     assert (values["APP_LLM_MODELNAME"]
-            == "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
+            == "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4")
     assert values["APP_LLM_SERVERURL"] == "auth-shim:8080"
     assert (values["APP_EMBEDDINGS_MODELNAME"]
             == "nvidia/llama-nemotron-embed-1b-v2")
@@ -188,6 +203,11 @@ def test_tc037_nemoclaw_env():
     assert values["NEMOCLAW_PROVIDER"] == "custom"
     assert values["NEMOCLAW_ENDPOINT_URL"] == "http://auth-shim:8080/v1"
     assert values["COMPATIBLE_API_KEY"] == "dummy"
+    # the gateway port contract: the CLI's default (8080) is the auth-shim's
+    # docker-proxy port — without this the status/onboarding calls fail with
+    # "multiple listeners" (2026-09-10 dry-run); read by 40-nemoclaw.sh and
+    # scripts/demo/03-agent-kickoff.sh.
+    assert values["NEMOCLAW_GATEWAY_PORT"] == "8085"
 
 
 def test_tc038_version_hygiene():

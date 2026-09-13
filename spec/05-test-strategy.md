@@ -2,7 +2,7 @@
 
 **Scope reality first:** this spec's buildable code is the mock work-order service plus the repo's contracts (compose/env/config files, deployment scripts, fixture manifests). The VSS/RAG/NemoClaw stacks are vendor blueprints configured at environment prep. Therefore the dev-machine gate covers the mock service end-to-end and the contract files deterministically; **everything GPU- or VM-dependent is deferred to environment prep / QA on the learner VM** (named checklist at the end of this section — it becomes the QA content of `09`/`10` and the guide).
 
-**Dev-machine facts the strategy is built on (already verified):** aarch64 (ARM), 20 cores, 121 GB RAM; python3 3.12.3; node v22.23.2; docker 29.2.1 with a running daemon (inside the lab's < 29.5.0 NGC-pull bound); Compose v5.0.2 (above the lab's v2.39.1 floor); uv 0.11.26; jq 1.7; **shellcheck absent**. No GPU here; the lab's RTX PRO 6000 (x86 vCD VM) is unreachable from this machine. Consequently **every test in this section runs CPU-only on the aarch64 dev machine** — no x86 images, no vendor NIMs, no 96 GB card assumed anywhere in the dev gate.
+**Dev-machine facts the strategy is built on (already verified):** aarch64 (ARM), 20 cores, 121 GB RAM; python3 3.12.3; node v22.23.2; docker 29.2.1 with a running daemon (inside the lab's < 29.5.0 NGC-pull bound); Compose v5.0.2 (above the lab's v2.39.1 floor); uv 0.11.26; jq 1.7; **shellcheck absent**. No GPU here; the lab's H100 (x86 vCD VM) is unreachable from this machine. Consequently **every test in this section runs CPU-only on the aarch64 dev machine** — no x86 images, no vendor NIMs, no ~94 GB card assumed anywhere in the dev gate.
 
 ## Test levels and rough split
 
@@ -80,8 +80,8 @@ bash scripts/test/container-smoke.sh
 | TC-031 | L2 | healthcheck wiring | `docker inspect mock-wo-smoke` | Health status `"healthy"` |
 | TC-032 | L3 | shim compose verbatim contract | parse `compose/docker-compose.shim.yml` | image exactly `nginx:1.27-alpine`; port `8080:8080`; network `demo-net` |
 | TC-033 | L3 | shim nginx template | `compose/nginx.conf.template` | contains `proxy_set_header    Authorization "";`, `x-api-key ${SHARED_API_KEY}`, `proxy_buffering off` |
-| TC-034 | L3 | LVS env overlay | `config/lvs.env.example` | exact values: `MODE=2d`, `BP_PROFILE=bp_developer_lvs`, `HARDWARE_PROFILE=RTXPRO6000BW`, `VLM_MODE=local_shared`, `VSS_AGENT_VERSION=3.2.1`, `RAG_SERVER_URL='http://rag-server:8081/v1'` (the `/v1` suffix — load-bearing), `KNOWLEDGE_COLLECTION='demo_corpus'`, `LLM_ENDPOINT_URL='http://auth-shim:8080'`; `LLM_MODE` present non-empty (value verified at prep); secret fields contain **placeholders only** — no `nvapi-…` value anywhere in the repo |
-| TC-035 | L3 | RAG env contract | `config/rag.env` | `APP_VECTORSTORE_NAME=elasticsearch`, `APP_LLM_MODELNAME=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`, `APP_LLM_SERVERURL=auth-shim:8080`, `APP_EMBEDDINGS_MODELNAME=nvidia/llama-nemotron-embed-1b-v2`, `APP_RANKING_MODELNAME=nvidia/llama-nemotron-rerank-1b-v2`, `MODEL_DIRECTORY=/data/nim-cache`; `ENABLE_AGENTIC_RAG` absent or `off` |
+| TC-034 | L3 | LVS env overlay | `config/lvs.env.example` | exact values: `MODE=2d`, `BP_PROFILE=bp_developer_lvs`, `HARDWARE_PROFILE=H100`, `VLM_MODE=local_shared`, `VSS_AGENT_VERSION=3.2.1`, `RAG_SERVER_URL='http://rag-server:8081/v1'` (the `/v1` suffix — load-bearing), `KNOWLEDGE_COLLECTION='demo_corpus'`, `LLM_ENDPOINT_URL='http://auth-shim:8080'`; `LLM_MODE` present non-empty (value verified at prep); secret fields contain **placeholders only** — no `nvapi-…` value anywhere in the repo |
+| TC-035 | L3 | RAG env contract | `config/rag.env` | `APP_VECTORSTORE_NAME=elasticsearch`, `APP_LLM_MODELNAME=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (the endpoint's served NVFP4 deployment id — the owner-confirmed contract id `NVIDIA/Nemotron-3.5-Lightning-30B-A3B` is tracked in 08), `APP_LLM_SERVERURL=auth-shim:8080`, `APP_EMBEDDINGS_MODELNAME=nvidia/llama-nemotron-embed-1b-v2`, `APP_RANKING_MODELNAME=nvidia/llama-nemotron-rerank-1b-v2`, `MODEL_DIRECTORY=/data/nim-cache`; `ENABLE_AGENTIC_RAG` absent or `off` |
 | TC-036 | L3 | VLM budget env | `config/vlm.env` | `NIM_PASSTHROUGH_ARGS` exactly `--gpu-memory-utilization 0.40 --max-model-len 32768 --max-num-seqs 4` |
 | TC-037 | L3 | NemoClaw env | `config/nemoclaw.env` | `NEMOCLAW_PROVIDER=custom`, `NEMOCLAW_ENDPOINT_URL=http://auth-shim:8080/v1`, `COMPATIBLE_API_KEY=dummy` |
 | TC-038 | L3 | version hygiene | grep across compose/Dockerfile/requirements | no `latest` anywhere; every `requirements*.txt` line is a `name==version` exact pin |
@@ -94,13 +94,13 @@ bash scripts/test/container-smoke.sh
 
 ## GPU/VM-dependent verification — deferred, by design
 
-The following **cannot run on the aarch64 dev machine** (no GPU; the 96 GB card is on the unreachable vCD VM) and are **environment-prep / QA territory on the learner VM**, owned by `09`/`10`, `lab-prep.md`, and the guide (dispatch 2). They are the build document's phase exit criteria, restated as the QA checklist:
+The following **cannot run on the aarch64 dev machine** (no GPU; the ~94 GB card is on the unreachable vCD VM) and are **environment-prep / QA territory on the learner VM**, owned by `09`/`10`, `lab-prep.md`, and the guide (dispatch 2). They are the build document's phase exit criteria, restated as the QA checklist:
 
-1. Shim: `GET :8080/v1/models` lists `nemotron-3-nano-omni-30b-a3b-reasoning`; streaming check — tokens arrive incrementally, not one blob (nginx buffering off).
+1. Shim: `GET :8080/v1/models` lists `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (the served id); streaming check — tokens arrive incrementally, not one blob (nginx buffering off).
 2. RAG Phase 2: six NIMs healthy; **actual per-NIM VRAM measured and recorded** (resolves the ~28 GB estimate and the 0.10 `gpu_memory_utilization` floor risk; if total > ~45 GB the VLM fraction is cut before co-residency).
-3. VSS Phase 3: agent :8000, LVS :38111, RT-VLM :8018 healthy; **VLM VRAM ≈ 38 GB, not ~86 GB** (env file applied); LLM NIM :30081 **not** running.
-4. Co-residency Phase 4: 7 compute processes, ≤ 80 GB total, no OOM under concurrent VSS + RAG load; both stacks survive a full VM reboot.
-5. NemoClaw Phase 5: `openclaw nemoclaw status` shows the custom endpoint + Nano Omni; HITL prompts collect all four parameters; report cites RAG-sourced documents (the frag path works — corpus not ignored).
+3. VSS Phase 3: agent :8000, LVS :38111, RT-VLM :8018 healthy; **VLM VRAM ≈ 34 GB, not ~86 GB** (0.40 pin via `RTVI_VLLM_*` — 08 item 39, dry-run measured 34.1 GB); LLM NIM :30081 **not** running.
+4. Co-residency Phase 4: 7 compute processes, ≤ 80 GB total, no OOM under concurrent VSS + RAG load; both stacks survive a full VM reboot — **zero interaction** (09 "Reboot resilience": restart policies + `nemoclaw-recover.service` boot repair + the 5-min self-heal timer armed by 50-resilience.sh; the reboot is the live test of that layer).
+5. NemoClaw Phase 5: `openclaw nemoclaw status` shows the custom endpoint + Nemotron-3.5-Lightning; HITL prompts collect all four parameters; report cites RAG-sourced documents (the frag path works — corpus not ignored).
 6. **End-to-end beat replay 1→4** (the aha) and optional 5 — the full learner walk-through from a clean start.
 
 Until those pass on the VM, "the lab works" is proven only to the extent of L0–L4: the mock service is correct, the contracts are exact, and the fixtures are structurally sound.

@@ -32,7 +32,7 @@ Scaled to a single-user lab demo, as the spec context requires: there is no publ
 | --- | --- | --- |
 | NGC API key (`NGC_CLI_API_KEY`) | Instructor-injected at prep: `~/.config/vss/lab.env` on the VM (gitignored location); passed to `docker login nvcr.io --password-stdin` and to the VSS `.env` at start | Never in the repo, never in a CLI argument (no key visible in `ps`/history), never in logs |
 | NVIDIA Build API key (`NVIDIA_API_KEY`) | Same mechanism, same file | Same rules |
-| Shared-endpoint key (`SHARED_API_KEY`) | Same file; consumed by the shim via `envsubst` at container start (the build document's mechanism) | Never in the repo; the repo carries `compose/nginx.conf.template`. envsubst substitutes the key and the **non-secret** upstream address `${SHARED_ENDPOINT_URL}` (instructor-provided, full URL — the pre-provisioned shared endpoint is recorded nowhere in the repo, 08 item 36) |
+| Shared-endpoint key (`SHARED_API_KEY`) | Same file; consumed by the shim via `envsubst` at container start (the build document's mechanism) | Never in the repo; the repo carries `compose/nginx.conf.template`. envsubst substitutes the key and the **non-secret** upstream address `${SHARED_ENDPOINT_URL}` (instructor-provided — the endpoint is now recorded in `01`/`09`/`10` and `lab-prep.md`; the lab.env value is the prefix before `/v1` per 08 item 36) |
 | `RAG_API_KEY` | Same mechanism; injected into the VSS `.env` (`RAG_API_KEY`) | Same rules |
 | `COMPATIBLE_API_KEY` | `config/nemoclaw.env` in the repo | `'dummy'` — safe constant, not a credential (shim discards it) |
 

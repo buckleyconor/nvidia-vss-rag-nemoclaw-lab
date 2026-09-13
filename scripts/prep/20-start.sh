@@ -30,7 +30,11 @@ LAB_ENV="${LAB_ENV:-$HOME/.config/vss/lab.env}"
 VSS_DIR="${VSS_DIR:-$HOME/vss-public}"
 RAG_DIR="${RAG_DIR:-/data/rag}"
 PREP_LOG="$REPO_ROOT/prep-log.md"
-MODEL_ID="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+MODEL_ID="nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4"
+# 2026-09-07 dev-VM finding (recorded in prep-log.md): the shared endpoint
+# serves the NVFP4 build under this vLLM id — not the owner-confirmed
+# NVIDIA/Nemotron-3.5-Lightning-30B-A3B (spec/08). Recorded reality wins;
+# the platform-side alias question is open.
 DRY_RUN=0
 
 usage() {
@@ -62,7 +66,8 @@ plan() {
     echo "  STEP 2/5  VSS stack                (the VLM claims 40% of the EMPTY GPU; gate: agent :8000/health, LVS :38111/v1/ready)"
     echo "  STEP 3/5  RT-VLM ready gate        (curl --retry 90 --retry-delay 10 --retry-all-errors http://127.0.0.1:8018/v1/health/ready — NIM load 5-15 min; VLM VRAM ~38 GB, not ~86 GB)"
     echo "  STEP 4/5  RAG stack                (the lab's six retrieval NIMs, never the LLM NIM; gate: :8081/v1/health, :8082/v1/health, six NIM containers running)"
-    echo "  STEP 5/5  NemoClaw sandbox         (40-nemoclaw.sh: init_nemoclaw.sh with config/nemoclaw.env; gate: openclaw nemoclaw status shows the custom endpoint + Nano Omni)"
+    echo "  STEP 5/5  NemoClaw sandbox         (40-nemoclaw.sh: init_nemoclaw.sh with config/nemoclaw.env; gate: openclaw nemoclaw status shows the custom endpoint + Nemotron-3.5-Lightning)"
+    echo "  HARDEN    reboot resilience        (50-resilience.sh: restart policies, boot NemoClaw repair, 5-min health watch; idempotent)"
 }
 
 if [ "$DRY_RUN" = "1" ]; then
@@ -115,14 +120,18 @@ echo "starting auth-shim (compose/docker-compose.shim.yml, env from $LAB_ENV —
 docker compose -f compose/docker-compose.shim.yml up -d >/dev/null
 echo "starting mock-wo (compose/mock-wo.yml)"
 docker compose -f compose/mock-wo.yml up -d >/dev/null
+# The shared endpoint has shown transient slow/hung windows on the dev VM
+# (2026-09-07, prep-log finding): a 120 s budget failed twice while the
+# endpoint recovered seconds later. 90x5 s mirrors the step-3 RT-VLM
+# tolerance (02: external slow starts are normal); platform to stabilize.
 SHIM_OK=""
-for _ in $(seq 1 60); do
+for _ in $(seq 1 90); do
     if curl -sf http://127.0.0.1:8080/v1/models -H 'Authorization: Bearer dummy' 2>/dev/null \
         | grep -qF "$MODEL_ID"; then
         SHIM_OK=1
         break
     fi
-    sleep 2
+    sleep 5
 done
 [ -n "$SHIM_OK" ] \
     || fail "shim gate failed: GET :8080/v1/models does not list $MODEL_ID (stop — every later phase depends on it, build doc Phase 1)"
@@ -168,7 +177,10 @@ with open(overlay_path) as f:
         if not s or s.startswith("#"):
             continue
         key, _, value = s.partition("=")
-        upsert(key.strip(), value.strip())
+        # inline comments are shell syntax, not value syntax — the learner
+        # copies lvs.env.example verbatim and its LLM_MODE line carries one
+        value = re.split(r"\s+#", value.strip(), 1)[0].strip()
+        upsert(key.strip(), value)
 
 # the three API keys: lab.env -> VSS .env at start (04); never in the repo
 for key in ("NGC_CLI_API_KEY", "NVIDIA_API_KEY", "RAG_API_KEY"):
@@ -184,28 +196,58 @@ PY
 # content against the release's copy and records any diff (08).
 install -Dm 644 "$REPO_ROOT/config/config_rag.yml" \
     "$LVS_DIR/vss-agent/configs/config_rag.yml"
-LLM_MODE=$(grep -E '^LLM_MODE=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" || true)
+LLM_MODE=$(grep -E '^LLM_MODE=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" | sed -E 's/[[:space:]]+#.*$//' || true)
+# Hardware profile from the real lvs.env: the learner-VM default (10 c1,
+# 2026-09-07 platform change) is the vGPU H100; different silicon overrides
+# it in its own (gitignored) lvs.env — 2026-09-07 dev VM is a vGPU
+# H100L-94C (~94 GB), same profile (prep-log finding).
+HARDWARE_PROFILE=$(grep -E '^HARDWARE_PROFILE=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" | sed -E 's/[[:space:]]+#.*$//' || true)
+[ -n "$HARDWARE_PROFILE" ] || HARDWARE_PROFILE="H100"  # learner default (10 c1, 2026-09-07 platform change); dev/dev-only hardware overrides via lvs.env
 REMOTE_LLM=no
-VSS_ARGS=(up -p lvs -H RTXPRO6000BW --vlm-env-file "$REPO_ROOT/config/vlm.env")
+# --llm: the vendor's own escape hatch ("Pass --llm <model-name> to
+# override") — its host-side model-list fetch of LLM_ENDPOINT_URL/v1/models
+# cannot resolve the container name `auth-shim` from the host. The lab
+# already verified the model at the shim gate (STEP 1), so pass the known
+# id instead of re-discovering it.
+VSS_ARGS=(up -p lvs -H "$HARDWARE_PROFILE" --llm "$MODEL_ID" --vlm-env-file "$REPO_ROOT/config/vlm.env")
 if [ "$LLM_MODE" = "remote" ]; then
     # CLI equivalent of the .env LLM_MODE=remote (02 config contract — the
     # value is verified at prep; requires LLM_ENDPOINT_URL on the host).
-    LLM_ENDPOINT_URL=$(grep -E '^LLM_ENDPOINT_URL=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" || true)
+    LLM_ENDPOINT_URL=$(grep -E '^LLM_ENDPOINT_URL=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" | sed -E 's/[[:space:]]+#.*$//' || true)
     [ -n "$LLM_ENDPOINT_URL" ] || fail "LLM_MODE=remote but LLM_ENDPOINT_URL missing from config/lvs.env"
     export LLM_ENDPOINT_URL
     VSS_ARGS+=(--use-remote-llm)
     REMOTE_LLM=yes
+else
+    # exact match is the contract (02): the lab never starts the local LLM
+    # NIM — silently skipping --use-remote-llm would break the aha path
+    # late in the run. A trailing inline comment (copied from
+    # lvs.env.example) is the usual cause of a near-miss value.
+    fail "LLM_MODE is '$LLM_MODE' in config/lvs.env, want exactly 'remote' — the lab never starts the local LLM NIM (02); check for a trailing comment on the LLM_MODE line"
 fi
-echo "starting VSS (dev-profile.sh up, profile lvs, hardware RTXPRO6000BW, vlm-env-file config/vlm.env, remote LLM via shim: $REMOTE_LLM)"
+echo "starting VSS (dev-profile.sh up, profile lvs, hardware $HARDWARE_PROFILE, vlm-env-file config/vlm.env, remote LLM via shim: $REMOTE_LLM)"
 DEV_PROFILE=$(find "$VSS_DIR" -type f -name dev-profile.sh | head -1)
 [ -n "$DEV_PROFILE" ] \
     || fail "dev-profile.sh not found under $VSS_DIR (vendor layout moved? record and adapt — 02/08)"
 cd "$(dirname "$DEV_PROFILE")/.."
+# VLM budget pin — the vendor-supported RTVI_VLLM_* surface (rtvi-vlm-
+# docker-compose.yml interpolates them into the vss-rtvi-vlm container
+# env; the entrypoint defaults VLLM_GPU_MEMORY_UTILIZATION to 0.7 when
+# empty — 2026-09-07 dry-run measured 62.8 GB and the six-NIM
+# co-residency, 09 sizing, collapsed: three NIMs OOM-exited). 0.40 ≈ 38
+# GB on the ~94 GB card. Compose interpolation precedence: process env
+# > --env-file, so this export wins over the vendor's tier values (0.35
+# default / get_rtvi_vllm_gpu_memory_utilization) in its generated.env.
+# No max-model-len knob exists on this surface — the pool cap is what
+# protects the budget (spec/08 finding; the NIM_PASSTHROUGH_ARGS key in
+# config/vlm.env is not consumed by this release's RTVI VLM entrypoint).
+export RTVI_VLLM_GPU_MEMORY_UTILIZATION=0.40
+export RTVI_VLLM_MAX_NUM_SEQS=4
 "$DEV_PROFILE" "${VSS_ARGS[@]}"
 cd "$REPO_ROOT"
 wait_http 90 10 30 "http://127.0.0.1:8000/health"
 wait_http 90 10 30 "http://127.0.0.1:38111/v1/ready"
-log "- 20-start step 2: VSS up (agent :8000/health, LVS :38111/v1/ready; LLM_MODE=$LLM_MODE; LVS .env at $LVS_ENV)"
+log "- 20-start step 2: VSS up (agent :8000/health, LVS :38111/v1/ready; LLM_MODE=$LLM_MODE; HW=$HARDWARE_PROFILE; LVS .env at $LVS_ENV)"
 
 # ---- STEP 3/5: RT-VLM ready gate (the exact 02 command) --------------------
 echo ""
@@ -235,15 +277,25 @@ USERID="$(id -u)"
 export USERID
 echo "starting the lab's six retrieval NIMs (explicit service names — the LLM NIM is NEVER started; the :30081-absent invariant, 02/09)"
 echo "first run pulls NIM images + weights: budget 45-70 min (build doc Phase 2)"
-docker compose -f deploy/compose/nims.yaml up -d \
+# rag-override-*.yml (lab-owned, -f): the blueprint's host-port map assumes a
+# standalone deployment; page-elements' 8000, ES's 9200 and rag-frontend's
+# 8090 collide with the VSS agent, VSS ES and mock-wo (2026-09-07 dry-run
+# finding). Internal RAG services are reached by container name on
+# nvidia-rag — the host bindings are dropped, not remapped. One override
+# per base file: a compose override may only declare services that exist in
+# ITS base file (a phantom service with no image/build makes the merged
+# project invalid).
+docker compose -f deploy/compose/nims.yaml -f "$REPO_ROOT/compose/rag-override-nims.yml" up -d \
     nemotron-embedding-ms nemotron-ranking-ms \
     page-elements graphic-elements table-structure nemotron-ocr
 echo "starting the vector DB (Elasticsearch is the default profile; Milvus is opt-in and costs a second GPU budget)"
-docker compose -f deploy/compose/vectordb.yaml up -d
+docker compose -f deploy/compose/vectordb.yaml -f "$REPO_ROOT/compose/rag-override-vectordb.yml" up -d
 echo "starting the ingestor (prep-time only — the learner never ingests)"
-docker compose -f deploy/compose/docker-compose-ingestor-server.yaml up -d
+# rag-override-ingestor.yml: the ingestor's internal redis publishes host
+# 6379 standalone, which the VSS stack's Redis owns in this lab.
+docker compose -f deploy/compose/docker-compose-ingestor-server.yaml -f "$REPO_ROOT/compose/rag-override-ingestor.yml" up -d
 echo "starting the RAG server (:8081)"
-docker compose -f deploy/compose/docker-compose-rag-server.yaml up -d
+docker compose -f deploy/compose/docker-compose-rag-server.yaml -f "$REPO_ROOT/compose/rag-override-rag-server.yml" up -d
 cd "$REPO_ROOT"
 wait_http 60 10 30 "http://127.0.0.1:8081/v1/health"
 wait_http 60 10 30 "http://127.0.0.1:8082/v1/health"
@@ -266,5 +318,14 @@ echo ""
 echo "== STEP 5/5  NemoClaw sandbox =="
 bash "$REPO_ROOT/scripts/prep/40-nemoclaw.sh"
 log "- 20-start step 5: NemoClaw sandbox ready (see the 40-nemoclaw section in prep-log.md)"
+
+# ---- HARDEN: reboot resilience (09) ----------------------------------------
+# Not a start-order step: this arms the zero-interaction recovery layer
+# (restart policies, boot NemoClaw repair, the 5-min health-watch timer).
+# Idempotent; safe to re-run any time.
+echo ""
+echo "== HARDEN  reboot resilience (50-resilience.sh) =="
+bash "$REPO_ROOT/scripts/prep/50-resilience.sh"
+log "- 20-start harden: reboot resilience armed (see the 50-resilience section in prep-log.md)"
 
 echo "20-start: PASS — all five steps complete; run scripts/prep/25-ingest-corpus.sh, then 30-verify-stack.sh"

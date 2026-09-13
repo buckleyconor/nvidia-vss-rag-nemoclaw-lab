@@ -1,0 +1,14 @@
+[Unit]
+Description=Lab stack health watch cadence (5 min; 10 min after boot)
+
+[Timer]
+# First run 10 min after boot (the stack needs the VLM cold-start headroom
+# and the container swarm to settle), then every 5 min. Persistent catches
+# the run missed while the VM was off (systemd replays it after boot).
+OnBootSec=10min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=lab-health-watch.service
+
+[Install]
+WantedBy=timers.target

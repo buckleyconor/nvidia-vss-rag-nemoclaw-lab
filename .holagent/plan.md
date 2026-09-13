@@ -17,7 +17,7 @@ objectives:
   - 'Verify the work order the agent files in the mock CMMS — its grouped citations and the delivered notification — with no human step after the instruction'
   - 'Triage a second, different-kind anomaly and observe the agent filing a monitoring note instead of a work order (optional extension)'
 environment:
-  baseline: 'vCD VM (Ubuntu 24.04 x86, 32 vCPU / 256 GB RAM / 2 TB NVMe, 1x RTX PRO 6000 96 GB full PCIe passthrough, /dev/shm 32 GB) with the full stack running before the session: auth-shim, VSS (agent, LVS, RT-VLM with the local 8B-class VLM), Enterprise RAG (server + six retriever NIMs), the NemoClaw sandbox, and the mock work-order service'
+  baseline: 'vCD VM (Ubuntu 24.04 x86, 32 vCPU / 256 GB RAM / 2 TB NVMe, 1x H100 ~94 GB vGPU partition, /dev/shm 32 GB) with the full stack running before the session: auth-shim, VSS (agent, LVS, RT-VLM with the local 8B-class VLM), Enterprise RAG (server + six retriever NIMs), the NemoClaw sandbox, and the mock work-order service'
   credentials:
     - 'learner-vm / (instructor-issued SSH to the vCD learner VM — single-user host; every endpoint in this guide runs on that host)'
   urls:
@@ -245,8 +245,8 @@ two in sync.
 ## Environment & lab prep summary (points at lab-prep.md)
 
 The environment is fully pre-provisioned before the learner starts: a single
-vCD VM (Ubuntu 24.04, 32 vCPU / 256 GB RAM / 2 TB NVMe, one RTX PRO 6000 96 GB
-on full PCIe passthrough) running the entire stack — the auth-shim, the VSS
+vCD VM (Ubuntu 24.04, 32 vCPU / 256 GB RAM / 2 TB NVMe, one H100 ~94 GB vGPU
+partition) running the entire stack — the auth-shim, the VSS
 stack (agent, LVS, RT-VLM with the local 8B-class VLM), the Enterprise RAG
 stack (server + six retriever NIMs), the NemoClaw sandbox, and the mock
 work-order service — with the RAG index already built (collection

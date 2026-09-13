@@ -1,0 +1,22 @@
+# compose/rag-override-vectordb.yml — lab-owned port override applied via
+# -f on deploy/compose/vectordb.yaml (20-start.sh STEP 4). ONE service: an
+# override may only declare services that exist in ITS base file (a phantom
+# service with no image/build makes the merged project invalid).
+#
+# The RAG Elasticsearch publishes 9200:9200 in the standalone blueprint;
+# the VSS stack's own Elasticsearch already owns host :9200 in this lab
+# (two independent ES instances — the lab's two stacks each use theirs).
+# rag-server reaches the RAG ES by container name over nvidia-rag; the
+# learner never touches it.
+# Container NAME too: vectordb.yaml hardcodes container_name: elasticsearch,
+# which the VSS stack's own ES container (STEP 2) already owns — 2026-09-07
+# dry-run: "Conflict. The container name /elasticsearch is already in use".
+# Renaming the container does not break RAG: the compose SERVICE name stays
+# `elasticsearch` and is the network alias rag-server resolves over
+# nvidia-rag.
+services:
+  elasticsearch:
+    container_name: rag-elasticsearch
+    ports: !override []   # plain `ports: []` is a no-op in compose merge —
+                         # the base 9200:9200 survived (2026-09-07 dry-run);
+                         # only !override clears the list
