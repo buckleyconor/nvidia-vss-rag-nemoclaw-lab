@@ -16,6 +16,13 @@
 #      granted: RAG :8081 (the agent's only knowledge path is VSS frag —
 #      ADR-V01/V06) and mock-wo :8091, the operator port that carries the
 #      approval gate. The generated policy is checked for both below.
+#      2026-09-13 recorded deviation: the vendor v3.2.1 VSS preset ITSELF
+#      grants host.openshell.internal:8081 (the standard VSS dev profile's
+#      RAG port — the developer-machine assumption that the preset would be
+#      clean was wrong). The generated file is therefore stripped of the
+#      FORBIDDEN_ENDPOINTS entries BEFORE the check below; the check stays
+#      as the last line of defence (a surviving entry means an unexpected
+#      shape and fails prep loudly).
 #      Before apply, entries that overlap the sandbox's built-in baseline
 #      are stripped (NemoClaw rejects host:port overlaps with conflicting
 #      metadata — "network endpoint ambiguity validation failed",
@@ -191,6 +198,44 @@ text = re.sub(r"^[ \t]+allowed_ips:[ \t]*\n(?:[ \t]+- \S+[ \t]*\n)+", "", text, 
 open(out_path, "w").write(text)
 print(f"lab endpoints added: {added or []}; already granted by the preset: {already or []}")
 PY
+# --- strip the FORBIDDEN ports from the generated file (2026-09-13) --------
+# The vendor preset carries host.openshell.internal:8081 (see the header
+# note); an entry is `- host: X` / `port: P` / optional deeper-indented
+# lines (access, allowed_ips). Drop whole entries for the forbidden ports.
+STRIPPED="$(python3 - "$POLICY_FILE" "${FORBIDDEN_ENDPOINTS[@]}" <<'PY'
+import re
+import sys
+
+path, ports = sys.argv[1], {p for p in sys.argv[2:]}
+lines = open(path).read().split("\n")
+out, i, dropped = [], 0, []
+while i < len(lines):
+    m = re.match(r"^(\s*)- host: ", lines[i])
+    if m:
+        indent = len(m.group(1))
+        j = i + 1
+        while j < len(lines) and lines[j].strip() == "":
+            j += 1
+        pm = re.match(r"^\s+port: (\d+)\s*$", lines[j]) if j < len(lines) else None
+        k = j + 1
+        while k < len(lines):
+            if lines[k].strip() == "":
+                k += 1
+                continue
+            if (len(lines[k]) - len(lines[k].lstrip())) <= indent:
+                break
+            k += 1
+        if pm and pm.group(1) in ports:
+            dropped.append(pm.group(1))
+            i = k
+            continue
+    out.append(lines[i])
+    i += 1
+open(path, "w").write("\n".join(out))
+print(" ".join(dropped) if dropped else "none")
+PY
+)"
+[ "$STRIPPED" != "none" ] && log "- recorded deviation: stripped forbidden-port grants ($STRIPPED) from the generated policy — the vendor v3.2.1 VSS preset ships host.openshell.internal:8081 (standard VSS dev RAG port); the lab's ADR-V01/V06/V08 boundary must not reach RAG or the operator port directly (2026-09-13, dev-VM finding)"
 for port in "${FORBIDDEN_ENDPOINTS[@]}"; do
     if grep -Eq "^[[:space:]]+port:[[:space:]]*${port}([^0-9]|$)" "$POLICY_FILE"; then
         fail "generated policy grants port $port — the sandbox must never reach it (operator-dashboard-spec ADR-V06/ADR-V08); fix the preset or LAB_ENDPOINTS"
