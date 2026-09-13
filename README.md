@@ -34,5 +34,5 @@ This repo is the single source for the lab: build code **and** the lab guide.
 ## Pinned versions
 
 VSS **v3.2.1** (tag SHA `7640d917047cf7b0fd3085eefb8282754b56bc94`) · RAG
-**v2.6.2** (SHA `f20716d73ae69528244a7b978a64e5c49c48`) · NemoClaw
+**v2.6.2** (SHA `f20716d73ae69a544ad4a692f38d6178a64e6f36`) · NemoClaw
 **v0.0.118**. Mismatches are prep findings, not silent substitutions.
