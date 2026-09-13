@@ -78,7 +78,10 @@ COUNT=$(find "$VIDEO_DIR" -maxdepth 1 -type f -name '*.mp4' 2>/dev/null | wc -l 
 [ "$COUNT" -gt 0 ] || fail "no .mp4 clips at $VIDEO_DIR after staging (provide the clips or fixtures/video/manifest.yaml — M6)"
 echo "staged: $COUNT clip(s) at $VIDEO_DIR"
 
-LVS_UI=$(grep -oE 'LVS UI[^\n]*' "$PREP_LOG" 2>/dev/null | tail -1 || true)
+# NOTE: 'LVS UI.*' — not '[^\n]*': inside a POSIX bracket expression [^\n]
+# means 'not a backslash and not the letter n', so the match would stop at
+# the first 'n' (2026-09-13: truncated the recorded URL at 'vss-age|n|t-ui').
+LVS_UI=$(grep -oE 'LVS UI.*' "$PREP_LOG" 2>/dev/null | tail -1 || true)
 echo ""
 echo "== beat 1 procedure (the learner does this in the UI) =="
 echo "1. Open the LVS UI${LVS_UI:+ ($LVS_UI — recorded at prep)}; the stack is up and the work-order list at http://localhost:8090 is EMPTY (baseline)."
