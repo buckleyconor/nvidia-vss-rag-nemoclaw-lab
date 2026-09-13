@@ -90,7 +90,24 @@ gate() {
     grep -qF "$MODEL_ID" <<<"$out" || { say "gate: model missing from status"; return 1; }
     grep -qF "Inference: healthy" <<<"$out" || { say "gate: inference not healthy"; return 1; }
     grep -qE 'Policies: .*vss' <<<"$out" || { say "gate: vss policy not listed"; return 1; }
-    say "gate: healthy (model + inference + vss policy)"
+    # 2026-09-13: the CLI status surface can be green on the LAST BREATH of a
+    # session that is about to kill the stack — the vendor gateway is
+    # session-scoped and stops the sandbox container on its last-client
+    # shutdown ("Stopped Docker sandbox containers during gateway shutdown",
+    # SIGTERM -> exit 143; prep-log 2026-09-13). The gate must also see what
+    # the watchdog probes: the sandbox container running, the gateway
+    # healthz (+1 port), the dashboard forward. (With the lab-nemoclaw-
+    # keepalive holding a persistent session these probes stay up; without
+    # one, this is what stops the ladder reporting a false success.)
+    [ -n "$(docker ps -q --filter "name=openshell-default--$SANDBOX" --filter status=running 2>/dev/null | head -1)" ] \
+        || { say "gate: sandbox container not running"; return 1; }
+    curl -fsS -o /dev/null --max-time 5 "http://127.0.0.1:$((GW_PORT + 1))/healthz" \
+        || { say "gate: gateway healthz not answering (127.0.0.1:$((GW_PORT + 1)))"; return 1; }
+    local dash_port
+    dash_port="${NEMOCLAW_DASHBOARD_PORT:-18789}"
+    curl -fsS -o /dev/null --max-time 5 "http://127.0.0.1:$dash_port/" \
+        || { say "gate: dashboard forward not answering (127.0.0.1:$dash_port)"; return 1; }
+    say "gate: healthy (model + inference + vss policy + container + healthz + forward)"
     return 0
 }
 

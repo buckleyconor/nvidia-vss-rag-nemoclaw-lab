@@ -1,0 +1,19 @@
+# lab-nemoclaw-keepalive.service — persistent NemoClaw gateway session
+# (2026-09-13: the vendor OpenShell gateway is CLI-session-scoped and stops
+# the sandbox container on its last-client shutdown — see the keepalive
+# script header and the prep-log 2026-09-13 section).
+[Unit]
+Description=NemoClaw keepalive — hold a persistent gateway session, revive the stack when down
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Environment=HOME=/root
+ExecStart=/usr/local/lib/lab/nemoclaw-keepalive.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

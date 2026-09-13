@@ -101,6 +101,16 @@ docker_leg() {
             # reboots (2026-09-11: kibana stayed 'created' for a full day and
             # the VSS UI dashboard frame 503'd behind haproxy's bk_kibana).
         fi
+        # The NemoClaw sandbox container's lifecycle is owned by the heal
+        # ladder + lab-nemoclaw-keepalive (2026-09-13): a raw `docker start`
+        # leaves it running with no gateway session, and the next CLI
+        # session's gateway shutdown stops it again (the post-reboot flap
+        # loop) — while the vendor's own recover/start is walled by the
+        # schema-8 receipt state. A bare start only burns the escalation
+        # budget; the nemoclaw leg (ladder) + keepalive handle it.
+        case "$name" in
+            openshell-default--demo-*) continue ;;
+        esac
         can_act "ctr:$name" || continue
         say "ACT(docker start) $name — state=$state exit=$exitcode (policy $policy)"
         if docker start "$name" >/dev/null 2>&1; then
