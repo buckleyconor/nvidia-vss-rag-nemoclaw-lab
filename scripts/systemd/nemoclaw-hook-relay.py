@@ -25,7 +25,10 @@ Contract
   port the vendor's own sandbox policy already references alongside 18789
   and which the vendor forward leaves unused). Only containers on demo-net
   can reach it (mock-wo via host.docker.internal:host-gateway); it is NOT on
-  loopback, 0.0.0.0, or any NemoClaw-managed port.
+  loopback, 0.0.0.0, or any NemoClaw-managed port. If demo-net does not
+  exist yet (boot ordering — the sandbox container joins demo-net after the
+  docker daemon starts), the relay waits in place, retrying the bind every
+  5 s, instead of crash-looping.
 - Auth: Authorization: Bearer <token>, token read from
   /root/.config/lab/nemoclaw-hook-token (root 600, gitignored). The token is
   the sandbox agent's gateway token (`nemoclaw demo gateway-token`); it
@@ -161,8 +164,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    log(f"relay starting on {HOST}:{PORT} (token file {TOKEN_FILE})")
-    http.server.ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    # Boot-ordering tolerance: 172.18.0.1 (the demo-net bridge IP) only exists
+    # once the sandbox container has joined demo-net, which happens after the
+    # docker daemon starts the unless-stopped containers. A bind failure at
+    # boot is expected, not an error — retry in place instead of crash-looping
+    # (systemd Restart=always is the backstop, not the design).
+    server = None
+    attempt = 0
+    while server is None:
+        try:
+            server = http.server.ThreadingHTTPServer((HOST, PORT), Handler)
+            log(f"relay listening on {HOST}:{PORT} (token file {TOKEN_FILE})")
+            break
+        except OSError as exc:
+            attempt += 1
+            if attempt == 1 or attempt % 12 == 0:  # first try, then ~every minute
+                log(f"bind {HOST}:{PORT} not possible yet ({exc.__class__.__name__}: "
+                    f"{exc}); waiting for demo-net to come up (retry {attempt})")
+            time.sleep(5)
+    server.serve_forever()
 
 
 if __name__ == "__main__":
