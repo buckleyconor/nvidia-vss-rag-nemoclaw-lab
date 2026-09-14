@@ -3,6 +3,14 @@
   "origin": "generated",
   "adopted_stages": [],
   "spec_dir": "spec",
-  "platforms": ["vcd"],
-  "environments": []
+  "platforms": [
+    "vcd"
+  ],
+  "environments": [
+    {
+      "name": "dev-vm",
+      "kind": "dev",
+      "endpoint": "localhost"
+    }
+  ]
 }

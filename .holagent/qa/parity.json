@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "env": "dev-vm",
+  "endpoint": "localhost",
+  "at": "2026-09-13T15:00:11.719Z",
+  "checks": [
+    {
+      "n": 0,
+      "check": "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader",
+      "expect": "H100 (SKU H100L-94C), ~96256 MiB (vGPU partition — learner SKU, platform-confirmed 2026-09-07)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 43,
+      "stdout": "NVIDIA H100L-94C, 96256 MiB\n",
+      "stderr": ""
+    },
+    {
+      "n": 1,
+      "check": "nvidia-smi --query-gpu=driver_version --format=csv,noheader",
+      "expect": "580.105.08",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 35,
+      "stdout": "580.105.08\n",
+      "stderr": ""
+    },
+    {
+      "n": 2,
+      "check": "docker info --format \"{{.CgroupDriver}}\"",
+      "expect": "cgroupfs",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 74,
+      "stdout": "cgroupfs\n",
+      "stderr": ""
+    },
+    {
+      "n": 3,
+      "check": "sysctl vm.max_map_count",
+      "expect": "vm.max_map_count = 1048576 (base image 10-map-count.conf; the requirement is >= 262144 — Elasticsearch floor)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 12,
+      "stdout": "vm.max_map_count = 1048576\n",
+      "stderr": ""
+    },
+    {
+      "n": 4,
+      "check": "curl -sf http://localhost:8080/v1/models",
+      "expect": "HTTP 200 listing nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 (the served id)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 51,
+      "stdout": "{\"object\":\"list\",\"data\":[{\"id\":\"nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4\",\"object\":\"model\",\"created\":1789311609,\"owned_by\":\"vllm\",\"root\":\"nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4\",\"parent\":null,\"max_model_len\":262144,\"permission\":[{\"id\":\"modelperm-9523fabea50bcefc\",\"object\":\"model_permission\",\"created\":1789311609,\"allow_create_engine\":false,\"allow_sampling\":true,\"allow_logprobs\":true,\"allow_search_indices\":false,\"allow_view\":true,\"allow_fine_tuning\":false,\"organization\":\"*\",\"group\":null,\"is_blocking\":false}]}]}",
+      "stderr": ""
+    },
+    {
+      "n": 5,
+      "check": "curl -sf http://localhost:8000/health",
+      "expect": "VSS agent healthy",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 21,
+      "stdout": "{\"value\":{\"isAlive\":true}}",
+      "stderr": ""
+    },
+    {
+      "n": 6,
+      "check": "curl -sf http://127.0.0.1:38111/v1/ready",
+      "expect": "HTTP 200",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 22,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "n": 7,
+      "check": "curl -sf http://127.0.0.1:8018/v1/health/ready",
+      "expect": "HTTP 200 (RT-VLM ready gate)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 21,
+      "stdout": "{\"object\":\"health.response\",\"message\":\"Service is ready.\"}",
+      "stderr": ""
+    },
+    {
+      "n": 8,
+      "check": "curl -sf http://localhost:8081/v1/health",
+      "expect": "RAG server healthy",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 22,
+      "stdout": "{\"message\":\"Service is up.\",\"databases\":[],\"object_storage\":[],\"nim\":[]}",
+      "stderr": ""
+    },
+    {
+      "n": 9,
+      "check": "curl -sf http://localhost:8090/health",
+      "expect": "HTTP 200, body {\"status\":\"ok\",\"db\":\"ok\"}",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 25,
+      "stdout": "{\"status\":\"ok\",\"db\":\"ok\",\"port\":\"agent\"}",
+      "stderr": ""
+    },
+    {
+      "n": 10,
+      "check": "nvidia-smi --query-compute-apps=process_name --format=csv,noheader | grep -cE 'tritonserver|VLLM'",
+      "expect": "7 model-serving processes (VLM + 6 NIMs; Triton python-backend stubs, MPS and VST show up as extra PIDs, not model processes)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 52,
+      "stdout": "11\n",
+      "stderr": ""
+    },
+    {
+      "n": 11,
+      "check": "nvidia-smi --query-gpu=memory.used --format=csv,noheader",
+      "expect": "steady state <= 80 GB (committed ~75 GB; VLM ~34 GB at the 0.40 pin — 08 item 39; not ~86 GB)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 40,
+      "stdout": "70385 MiB\n",
+      "stderr": ""
+    },
+    {
+      "n": 12,
+      "check": "! ss -ltn | grep -q :30081",
+      "expect": "exit 0 (no listener on :30081 — the local LLM NIM must NOT be running; the LLM is remote)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 54,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "n": 13,
+      "check": "nemoclaw status --json | jq -r .liveInference.model",
+      "expect": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 (shared endpoint; no local LLM NIM)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 1846,
+      "stdout": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4\n",
+      "stderr": ""
+    },
+    {
+      "n": 14,
+      "check": "docker version --format \"{{.Server.Version}}\"",
+      "expect": ">= 28.3.3 and < 29.5.0 (newer Docker breaks NGC pulls)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 42,
+      "stdout": "29.1.3\n",
+      "stderr": ""
+    },
+    {
+      "n": 15,
+      "check": "docker compose version --short",
+      "expect": ">= v2.39.1",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 78,
+      "stdout": "5.5.1\n",
+      "stderr": ""
+    },
+    {
+      "n": 16,
+      "check": "systemctl is-enabled nemoclaw-recover.service",
+      "expect": "enabled (boot repair: the host gateway + dashboard forward are not docker-managed)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 19,
+      "stdout": "enabled\n",
+      "stderr": ""
+    },
+    {
+      "n": 17,
+      "check": "systemctl is-enabled lab-health-watch.timer",
+      "expect": "enabled (5-min health watch + self-heal; 09 resilience section)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 22,
+      "stdout": "enabled\n",
+      "stderr": ""
+    },
+    {
+      "n": 18,
+      "check": "grep -c live-restore.*:.*true /etc/docker/daemon.json",
+      "expect": "1 (live-restore true in the Docker daemon config — an accidental daemon restart no longer takes the stack down; effective at next daemon restart/reboot)",
+      "ok": true,
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 10,
+      "stdout": "1\n",
+      "stderr": ""
+    }
+  ],
+  "coverage": {
+    "endpoints": [
+      "http://localhost:8082",
+      "OpenClaw UI URL recorded at prep (prep-log.md)",
+      "https://model.delllabs.local/api/nemotron35/v1 (shared off-VM inference endpoint, pre-provisioned; reached via the auth-shim — the shim lab.env value is the prefix before /v1: https://model.delllabs.local/api/nemotron35/)"
+    ],
+    "artifacts": [
+      "/data/vss-apps-data",
+      "/data/corpus",
+      "/data/video",
+      "/data/nim-cache",
+      "~/.cache/nim",
+      "RAG index: Elasticsearch collection demo_corpus",
+      "repo fixtures/ manifests (video, corpus, rag-index)",
+      "repo prep-log.md (gitignored)"
+    ],
+    "software": [
+      "NVIDIA driver",
+      "Docker Engine",
+      "NVIDIA Container Toolkit",
+      "NGC CLI",
+      "Node.js",
+      "kernel tuning",
+      "auth-shim",
+      "mock-wo (mock work-order service)",
+      "VSS stack",
+      "VSS VLM (local)",
+      "Enterprise RAG",
+      "RAG retriever NIMs (6)",
+      "Elasticsearch (shared)"
+    ]
+  },
+  "summary": {
+    "total": 19,
+    "passed": 19,
+    "failed": 0
+  },
+  "ok": true
+}

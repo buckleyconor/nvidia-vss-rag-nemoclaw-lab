@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "kind": "smoke",
+  "env": "dev-vm",
+  "at": "2026-09-13T15:00:26.933Z",
+  "ok": true,
+  "checks": [
+    {
+      "name": "GPU: H100L-94C vGPU partition 96256 MiB, driver 580.105.08",
+      "ok": true
+    },
+    {
+      "name": "docker: cgroupfs, 29.1.3 in window, compose 5.5.1, live-restore true",
+      "ok": true
+    },
+    {
+      "name": "sysctl: vm.max_map_count=1048576 (>= 262144 ES floor)",
+      "ok": true
+    },
+    {
+      "name": "auth-shim :8080 lists nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+      "ok": true
+    },
+    {
+      "name": "VSS agent :8000 healthy, LVS :38111 ready",
+      "ok": true
+    },
+    {
+      "name": "RT-VLM :8018 ready gate",
+      "ok": true
+    },
+    {
+      "name": "RAG server :8081 up",
+      "ok": true
+    },
+    {
+      "name": "mock-wo :8090 {\"status\":\"ok\",\"db\":\"ok\"}",
+      "ok": true
+    },
+    {
+      "name": "7 model-serving processes (6 tritonserver NIMs + VLLM engine)",
+      "ok": true
+    },
+    {
+      "name": "GPU steady state 70385 MiB <= 80 GB",
+      "ok": true
+    },
+    {
+      "name": "no listener on :30081 (local LLM NIM absent)",
+      "ok": true
+    },
+    {
+      "name": "nemoclaw liveInference.model = shared-endpoint NVFP4 model",
+      "ok": true
+    },
+    {
+      "name": "nemoclaw-recover.service + lab-health-watch.timer enabled",
+      "ok": true
+    }
+  ],
+  "notes": "Post-reboot bring-up confirmed by the lab owner, then mechanically verified: hol_parity --env dev-vm 19/19 (recorded .holagent/qa/parity.json). Recovery path held: openshell sandbox up 13 min healthy, nemoclaw gateway healthy (mode nemoclaw-managed, v0.0.118), RT-VLM ready before RAG start, live-restore + health-watch timers did their job. Contract fixes applied to lab-prep.md at first parity run (c4 sysctl source, c11 model-process count, c14 nemoclaw CLI, c13 negative-assertion exit code, c19 daemon.json quoting) — see prep-log.md."
+}

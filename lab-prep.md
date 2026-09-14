@@ -7,7 +7,7 @@ software:
   - { name: 'NVIDIA Container Toolkit', version: '1.17.8+', where: 'host (nvidia-ctk runtime configure --runtime=docker)' }
   - { name: 'NGC CLI', version: '4.10.0+', where: 'host' }
   - { name: 'Node.js', version: '20.x', where: 'host (NemoClaw requirement)' }
-  - { name: 'kernel tuning', version: 'vm.max_map_count=262144, fs.file-max=2097152, net.core.somaxconn=4096', where: '/etc/sysctl.d/99-vss.conf' }
+  - { name: 'kernel tuning', version: 'vm.max_map_count=1048576 (base image 10-map-count.conf; requirement is >= 262144 — Elasticsearch floor), fs.file-max = host kernel max (>= 2097152), net.core.somaxconn=4096', where: 'host sysctl (99-vss.conf carries the TCP/IPv6 tuning)' }
   - { name: 'auth-shim', version: 'nginx:1.27-alpine (resolved digest in prep-log.md)', where: 'compose service on :8080 (Bearer -> x-api-key for the shared endpoint)' }
   - { name: 'mock-wo (mock work-order service)', version: 'python:3.12-slim base, built in-lab (digest in prep-log.md)', where: 'compose service mock-wo on :8090 (API + UI, /health)' }
   - { name: 'VSS stack', version: 'repo v3.2.1 (user GitHub release data 2026-09-02; supersedes the initial v3.2.0 confirmation and the sizing open set v3.1.0 vs v3.2.1), VSS_AGENT_VERSION=3.2.1 (assumed to track the release tag - the build doc 3.2.0 value corresponds to v3.2.0; prep-verified on nvcr.io)', where: 'prep-cloned to vss-public; agent :8000, LVS :38111, RT-VLM :8018' }
@@ -45,22 +45,22 @@ verify:
   - { check: 'nvidia-smi --query-gpu=name,memory.total --format=csv,noheader', expect: 'H100 (SKU H100L-94C), ~96256 MiB (vGPU partition — learner SKU, platform-confirmed 2026-09-07)' }
   - { check: 'nvidia-smi --query-gpu=driver_version --format=csv,noheader', expect: '580.105.08' }
   - { check: 'docker info --format "{{.CgroupDriver}}"', expect: 'cgroupfs' }
-  - { check: 'sysctl vm.max_map_count', expect: 'vm.max_map_count = 262144' }
+  - { check: 'sysctl vm.max_map_count', expect: 'vm.max_map_count = 1048576 (base image 10-map-count.conf; the requirement is >= 262144 — Elasticsearch floor)' }
   - { check: 'curl -sf http://localhost:8080/v1/models', expect: 'HTTP 200 listing nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 (the served id)' }
   - { check: 'curl -sf http://localhost:8000/health', expect: 'VSS agent healthy' }
   - { check: 'curl -sf http://127.0.0.1:38111/v1/ready', expect: 'HTTP 200' }
   - { check: 'curl -sf http://127.0.0.1:8018/v1/health/ready', expect: 'HTTP 200 (RT-VLM ready gate)' }
   - { check: 'curl -sf http://localhost:8081/v1/health', expect: 'RAG server healthy' }
   - { check: 'curl -sf http://localhost:8090/health', expect: 'HTTP 200, body {"status":"ok","db":"ok"}' }
-  - { check: 'nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader | wc -l', expect: '7 compute processes (VLM + 6 NIMs)' }
+  - { check: "nvidia-smi --query-compute-apps=process_name --format=csv,noheader | grep -cE 'tritonserver|VLLM'", expect: '7 model-serving processes (VLM + 6 NIMs; Triton python-backend stubs, MPS and VST show up as extra PIDs, not model processes)' }
   - { check: 'nvidia-smi --query-gpu=memory.used --format=csv,noheader', expect: 'steady state <= 80 GB (committed ~75 GB; VLM ~34 GB at the 0.40 pin — 08 item 39; not ~86 GB)' }
-  - { check: 'ss -ltn | grep :30081', expect: 'no output (the local LLM NIM must NOT be running — the LLM is remote)' }
-  - { check: 'openclaw nemoclaw status --json | jq -r .model', expect: 'NVIDIA/Nemotron-3.5-Lightning-30B-A3B (shared endpoint)' }
+  - { check: '! ss -ltn | grep -q :30081', expect: 'exit 0 (no listener on :30081 — the local LLM NIM must NOT be running; the LLM is remote)' }
+  - { check: 'nemoclaw status --json | jq -r .liveInference.model', expect: 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 (shared endpoint; no local LLM NIM)' }
   - { check: 'docker version --format "{{.Server.Version}}"', expect: '>= 28.3.3 and < 29.5.0 (newer Docker breaks NGC pulls)' }
   - { check: 'docker compose version --short', expect: '>= v2.39.1' }
   - { check: 'systemctl is-enabled nemoclaw-recover.service', expect: 'enabled (boot repair: the host gateway + dashboard forward are not docker-managed)' }
   - { check: 'systemctl is-enabled lab-health-watch.timer', expect: 'enabled (5-min health watch + self-heal; 09 resilience section)' }
-  - { check: "python3 -c \"import json;print(json.load(open('/etc/docker/daemon.json')).get('live-restore'))\"", expect: 'True (an accidental docker daemon restart no longer takes the stack down; effective at next daemon restart/reboot)' }
+  - { check: 'grep -c live-restore.*:.*true /etc/docker/daemon.json', expect: '1 (live-restore true in the Docker daemon config — an accidental daemon restart no longer takes the stack down; effective at next daemon restart/reboot)' }
 ---
 
 # Lab prep — NVIDIA Service Blueprint: VSS + RAG + NemoClaw
@@ -78,11 +78,11 @@ restate it for human readers; keep the two in step.
 Frontmatter rules (guide-scaffolds, "Frontmatter subset rule"): one-line flow
 map per list entry, quote anything with special characters, numbers bare.
 
-> **Registration note:** this lab currently has **no registered `dev`
-> environment** (the vCD VM is not reachable from the dev machine), so
-> `verify` cannot be executed by `/hol-qa` yet — the checks are declared for
-> when a `dev` entry is added to `.holagent/lab-ref.json`. Until then they
-> are the environment-prep / QA checklist (spec `09`, L5).
+> **Registration note:** the dev environment is registered as **`dev-vm`
+> (kind `dev`)** in `.holagent/lab-ref.json` — the session runs on the vCD VM
+> itself, so the checks execute locally. `hol_parity --env dev-vm` runs the
+> full `verify` set unattended (ADR-011/012); production stays on the
+> `/hol-qa-prod` script path.
 
 ## Baseline
 
@@ -99,7 +99,7 @@ map per list entry, quote anything with special characters, numbers bare.
 | NVIDIA Container Toolkit | 1.17.8+ | host (`nvidia-ctk runtime configure --runtime=docker`) |
 | NGC CLI | 4.10.0+ | host |
 | Node.js | 20.x | host (NemoClaw requirement) |
-| kernel tuning | `vm.max_map_count=262144` (+ `fs.file-max`, `net.core.somaxconn`) | `/etc/sysctl.d/99-vss.conf` |
+| kernel tuning | `vm.max_map_count=1048576` (base image; requirement is ≥ 262144), `net.core.somaxconn=4096` | host sysctl (Elasticsearch refuses to start without `vm.max_map_count ≥ 262144`) |
 | auth-shim | nginx:1.27-alpine (digest in `prep-log.md`) | compose service on :8080 |
 | mock-wo | python:3.12-slim base, built in-lab (digest in `prep-log.md`) | compose service `mock-wo` on :8090 |
 | VSS stack | repo **v3.2.1** (user's GitHub release data, 2026-09-02 — supersedes the initial v3.2.0 confirmation and the sizing's open set v3.1.0 vs v3.2.1), `VSS_AGENT_VERSION=3.2.1` (assumed to track the release tag — the build document's 3.2.0 value corresponds to v3.2.0; prep-verified on nvcr.io) | prep-cloned to `vss-public`; agent :8000, LVS :38111, RT-VLM :8018 |
@@ -154,20 +154,22 @@ The environment is ready when every `verify` check in the frontmatter passes:
 1. `nvidia-smi --query-gpu=name,memory.total --format=csv,noheader` → H100 (dev-VM SKU H100L-94C), ~96256 MiB (vGPU partition)
 2. `nvidia-smi --query-gpu=driver_version --format=csv,noheader` → `580.105.08`
 3. `docker info --format "{{.CgroupDriver}}"` → `cgroupfs`
-4. `sysctl vm.max_map_count` → `vm.max_map_count = 262144`
+4. `sysctl vm.max_map_count` → `vm.max_map_count = 1048576` (base image; requirement is ≥ 262144)
 5. `curl -sf http://localhost:8080/v1/models` → HTTP 200 listing `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (the served id)
 6. `curl -sf http://localhost:8000/health` → VSS agent healthy
 7. `curl -sf http://127.0.0.1:38111/v1/ready` → HTTP 200
 8. `curl -sf http://127.0.0.1:8018/v1/health/ready` → HTTP 200 (RT-VLM ready gate)
 9. `curl -sf http://localhost:8081/v1/health` → RAG server healthy
 10. `curl -sf http://localhost:8090/health` → HTTP 200, body `{"status":"ok","db":"ok"}`
-11. `nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader | wc -l` → 7 compute processes (VLM + 6 NIMs)
+11. `nvidia-smi --query-compute-apps=process_name --format=csv,noheader | grep -cE 'tritonserver|VLLM'` → 7 model-serving processes (VLM + 6 NIMs; Triton stubs / MPS / VST are extra PIDs)
 12. `nvidia-smi --query-gpu=memory.used --format=csv,noheader` → steady state ≤ 80 GB (committed ~75 GB; VLM ~34 GB at the 0.40 pin, not ~86 GB)
-13. `ss -ltn | grep :30081` → no output (the local LLM NIM must NOT be running)
-14. `openclaw nemoclaw status --json | jq -r .model` → `NVIDIA/Nemotron-3.5-Lightning-30B-A3B` (shared endpoint)
+13. `! ss -ltn | grep -q :30081` → exit 0 — nothing listening on :30081 (the local LLM NIM must NOT be running)
+14. `nemoclaw status --json | jq -r .liveInference.model` → `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` (shared endpoint)
 15. `docker version --format "{{.Server.Version}}"` → ≥ 28.3.3 and < 29.5.0 (newer Docker breaks NGC pulls)
 16. `docker compose version --short` → ≥ v2.39.1
+17. `systemctl is-enabled nemoclaw-recover.service` → `enabled` (boot repair: the host gateway + dashboard forward are not docker-managed)
+18. `systemctl is-enabled lab-health-watch.timer` → `enabled` (5-min health watch + self-heal)
+19. `grep -c live-restore.*:.*true /etc/docker/daemon.json` → `1` (live-restore on: an accidental daemon restart no longer takes the stack down)
 
-Run them with `/hol-qa --env <dev-environment>` once a `dev` environment is
-registered; production is verified by the script `/hol-qa-prod` emits, never
-by an agent.
+Run them with `/hol-qa --env dev-vm` (registered in `.holagent/lab-ref.json`);
+production is verified by the script `/hol-qa-prod` emits, never by an agent.
