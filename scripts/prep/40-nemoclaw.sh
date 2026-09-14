@@ -138,7 +138,7 @@ if sandbox_exists; then
     # install") even when the model line is present. `|| true` isolates the
     # grep. 2026-09-11 dry-run: broken-state re-run hit exactly this.
     if { nemoclaw_cli "$SANDBOX" status 2>/dev/null || true; } | grep -qF "$MODEL_ID"; then
-        echo "sandbox '$SANDBOX' already exists with the lab model — re-run path (skip onboarding, re-apply policy)"
+        echo "sandbox '$SANDBOX' already exists with the lab model — re-run path (init_nemoclaw.sh re-runs — required for a clean start; policy re-applied)"
     else
         fail "sandbox '$SANDBOX' exists but is not this lab's install (no $MODEL_ID) — NemoClaw requires a FRESH OpenClaw (build doc 9.1); remove the existing installation first (instructor action), then re-run"
     fi

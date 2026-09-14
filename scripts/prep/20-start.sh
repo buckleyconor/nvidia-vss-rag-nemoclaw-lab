@@ -203,11 +203,18 @@ for key in ("NGC_CLI_API_KEY", "NVIDIA_API_KEY", "RAG_API_KEY"):
 with open(lvs_path, "w") as f:
     f.write("\n".join(lines) + "\n")
 PY
-# the repo's frag-enabling agent config (02: VSS_AGENT_CONFIG_FILE ->
-# config_rag.yml; the default config.yml has frag OFF). Prep verifies the
-# content against the release's copy and records any diff (08).
-install -Dm 644 "$REPO_ROOT/config/config_rag.yml" \
-    "$LVS_DIR/vss-agent/configs/config_rag.yml"
+# VSS v3.2.1 ships config_rag.yml (frag_retrieval registered) beside config.yml
+# — use it, never overwrite it. (2026-09-14 review #16/#17: the old repo stub
+# replaced the vendor's 424-line config, and dev-profile.sh:1181 forced
+# config.yml — frag OFF — into generated.env anyway.)
+AGENT_RAG_CONFIG="$LVS_DIR/vss-agent/configs/config_rag.yml"
+[ -f "$AGENT_RAG_CONFIG" ] || fail "vendor config_rag.yml missing at $AGENT_RAG_CONFIG (layout moved?)"
+grep -q '_type: knowledge_retrieval' "$AGENT_RAG_CONFIG" \
+    || fail "vendor config_rag.yml does not register frag (_type: knowledge_retrieval)"
+# dev-profile.sh:1181 forces VSS_AGENT_CONFIG_FILE=.../config.yml (frag OFF) into
+# generated.env; process env beats --env-file in compose interpolation (same
+# mechanism as the RTVI_VLLM_* exports below), so export the IN-CONTAINER path.
+export VSS_AGENT_CONFIG_FILE="/vss-agent/deploy/docker/${LVS_DIR#"$VSS_DIR/deploy/docker/"}/vss-agent/configs/config_rag.yml"
 LLM_MODE=$(grep -E '^LLM_MODE=' "$REPO_ROOT/config/lvs.env" | tail -1 | cut -d= -f2- | tr -d "'\"" | sed -E 's/[[:space:]]+#.*$//' || true)
 # Hardware profile from the real lvs.env: the learner-VM default (10 c1,
 # 2026-09-07 platform change) is the vGPU H100; different silicon overrides
@@ -259,7 +266,14 @@ export RTVI_VLLM_MAX_NUM_SEQS=4
 cd "$REPO_ROOT"
 wait_http 90 10 30 "http://127.0.0.1:8000/health"
 wait_http 90 10 30 "http://127.0.0.1:38111/v1/ready"
-log "- 20-start step 2: VSS up (agent :8000/health, LVS :38111/v1/ready; LLM_MODE=$LLM_MODE; HW=$HARDWARE_PROFILE; LVS .env at $LVS_ENV)"
+# frag gate: the serving process must be running the exported config_rag.yml —
+# if dev-profile.sh's config.yml default won, beat 3 loses its RAG evidence
+# (build-doc failure-mode row: "VSS answers ignore the corpus"). The image
+# ships no sh/printenv; python3 is the entrypoint interpreter.
+AGENT_CFG_RUNNING=$(docker exec vss-agent python3 -c 'import os;print(os.environ.get("VSS_AGENT_CONFIG_FILE",""))' 2>/dev/null || true)
+[ "$AGENT_CFG_RUNNING" = "$VSS_AGENT_CONFIG_FILE" ] \
+    || fail "vss-agent is not running config_rag.yml — frag is OFF (dev-profile.sh default won; running: $AGENT_CFG_RUNNING)"
+log "- 20-start step 2: VSS up (agent :8000/health, LVS :38111/v1/ready; LLM_MODE=$LLM_MODE; HW=$HARDWARE_PROFILE; LVS .env at $LVS_ENV; agent config: $VSS_AGENT_CONFIG_FILE)"
 
 # ---- STEP 3/5: RT-VLM ready gate (the exact 02 command) --------------------
 echo ""

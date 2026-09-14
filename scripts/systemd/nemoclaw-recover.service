@@ -14,6 +14,12 @@ Type=oneshot
 # systemd does not set HOME for system services; the CLI resolves its
 # state dir and nvm bootstrap from HOME (root's — matches the install).
 Environment=HOME=/root
+# Boot pass starts the ladder at tier 2: init_nemoclaw.sh (via 40-nemoclaw.sh)
+# is the only boot path that re-establishes the full lab contract; tiers 0/1
+# are partial repairs left to the 5-min health-watch leg (default tier 0).
+# 2026-09-14 review: on a VM with the repo elsewhere, add Environment=LAB_REPO
+# or tier 2 cannot find 40-nemoclaw.sh.
+Environment=NEMOCLAW_HEAL_START_TIER=2
 # Settle time: the container swarm (42 units) needs a minute after the
 # daemon before the sandbox gateway answers probes. The 5-min health-watch
 # timer covers whatever this pass does not.

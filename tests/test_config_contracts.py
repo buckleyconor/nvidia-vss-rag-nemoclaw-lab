@@ -106,16 +106,27 @@ def test_tc033_shim_nginx_template():
     assert "proxy_buffering off" in text
 
 
-def test_config_rag_yaml_frag_enabled():
-    # 08 item 10: the M4 contract pins that the file exists, parses as
-    # YAML, and enables the `frag` knowledge-retrieval tool. The exact
-    # shipped content (schema; the RAG_ value reads) is verified against
-    # the cloned release at prep — so the schema is NOT pinned here
-    # (08 items 10 + 38).
-    path = REPO / "config/config_rag.yml"
-    data = yaml.safe_load(path.read_text())
-    assert data, "config_rag.yml parsed empty"
-    assert "frag" in yaml.safe_dump(data), "frag tool not enabled"
+def test_20_start_exports_vendor_frag_config():
+    # 08 item 10 (rework 2026-09-14, review #16/#17): VSS v3.2.1 ships
+    # config_rag.yml (frag_retrieval registered) beside config.yml, and
+    # dev-profile.sh:1181 forces VSS_AGENT_CONFIG_FILE=.../config.yml
+    # (frag OFF) into generated.env. Compose interpolation gives process
+    # env priority over --env-file, so 20-start.sh must export the
+    # in-container vendor path, and the repo no longer carries a stub to
+    # install over the vendor file (the old config/config_rag.yml is
+    # deleted; the vendor file is authoritative).
+    text = (REPO / "scripts/prep/20-start.sh").read_text()
+    assert (
+        'export VSS_AGENT_CONFIG_FILE="/vss-agent/deploy/docker/'
+        '${LVS_DIR#"$VSS_DIR/deploy/docker/"}/vss-agent/configs/config_rag.yml"'
+        in text
+    ), "20-start.sh must export the in-container vendor config_rag.yml path"
+    assert (
+        "install -Dm 644 \"$REPO_ROOT/config/config_rag.yml\"" not in text
+    ), "20-start.sh must not overwrite the vendor config with a repo stub"
+    assert not (REPO / "config/config_rag.yml").exists(), (
+        "the repo must not carry a config_rag.yml stub over the vendor file"
+    )
 
 
 def test_tc034_lvs_env_example():

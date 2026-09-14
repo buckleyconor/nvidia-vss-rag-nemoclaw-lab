@@ -18,6 +18,15 @@
 #   tier 2      full `40-nemoclaw.sh` re-run (idempotent: vendor init, lab
 #               policy, the in-sandbox auth-shim /etc/hosts pin + policy
 #               entry, its own gate)
+#   start tier  NEMOCLAW_HEAL_START_TIER=0|1|2 (default 0 = full ladder).
+#               The BOOT unit (nemoclaw-recover.service) sets 2: init_nemoclaw.sh
+#               (via tier 2's 40-nemoclaw.sh) is the only boot path that
+#               re-establishes the full lab contract; tiers 0/1 are partial
+#               repairs that stop short of init and are left to the 5-min
+#               health-watch cadence, which runs the default (tier 0) ladder.
+#               (2026-09-14 review: on a VM where the repo is not at the
+#               default REPO path, tier 2 cannot find 40-nemoclaw.sh — set
+#               LAB_REPO in the unit.)
 #   tier 3      NUCLEAR — clean re-onboard: openshell sandbox delete ->
 #               nemoclaw demo destroy (reconcile) -> gateway remove ->
 #               process kill -> stale state sweep (PRESERVED, never deleted:
@@ -129,11 +138,21 @@ nuclear_allowed() {
 }
 record() { echo "$(date +%s) $1" >>"$STATE"; tail -20 "$STATE" >"$STATE.tmp" && mv "$STATE.tmp" "$STATE"; }
 
-say "nemoclaw-heal: started (pid $$)"
+# --- start tier (2026-09-14) --------------------------------------------------
+# The boot unit starts at tier 2 (init_nemoclaw.sh via 40-nemoclaw.sh is the
+# only reliable boot path — the recover/start tiers stop short of it). The
+# health-watch leg runs this script without the variable -> default tier 0.
+case "${NEMOCLAW_HEAL_START_TIER:-0}" in
+    0|1|2) START_TIER="${NEMOCLAW_HEAL_START_TIER:-0}" ;;
+    *) say "WARN invalid NEMOCLAW_HEAL_START_TIER='${NEMOCLAW_HEAL_START_TIER}' — using 0"; START_TIER=0 ;;
+esac
+
+say "nemoclaw-heal: started (pid $$, start tier $START_TIER)"
 gate && { say "nemoclaw-heal: already healthy — no action"; exit 0; }
-say "nemoclaw-heal: gate FAILED — entering the ladder"
+say "nemoclaw-heal: gate FAILED — entering the ladder at tier $START_TIER"
 
 # --- tier 0: the vendor's own boot repair ------------------------------------
+if [ "$START_TIER" -le 0 ]; then
 say "tier 0: vendor 'nemoclaw $SANDBOX recover' (classic boot repair)"
 out0="$(env NEMOCLAW_GATEWAY_PORT="$GW_PORT" "$CLI" demo recover 2>&1)"; rc0=$?
 tail -6 <<<"$out0" | sed 's/^/    /' | tee -a "$LOG"
@@ -153,8 +172,12 @@ else
 fi
 record "recover"
 gate && exit 0
+else
+    say "tier 0: skipped (start tier $START_TIER — init via tier 2 is the boot path; tier 0 is health-watch only)"
+fi
 
 # --- tier 1: a stopped container ---------------------------------------------
+if [ "$START_TIER" -le 1 ]; then
 say "tier 1: 'nemoclaw $SANDBOX start' (recover a stopped container)"
 out1="$(env NEMOCLAW_GATEWAY_PORT="$GW_PORT" "$CLI" demo start 2>&1)"; rc1=$?
 tail -4 <<<"$out1" | sed 's/^/    /' | tee -a "$LOG"
@@ -162,6 +185,9 @@ tail -4 <<<"$out1" | sed 's/^/    /' | tee -a "$LOG"
 record "start"
 sleep 15
 gate && exit 0
+else
+    say "tier 1: skipped (start tier $START_TIER — init via tier 2 is the boot path; tier 1 is health-watch only)"
+fi
 
 # --- tier 2: the lab's canonical re-run (idempotent) --------------------------
 say "tier 2: 40-nemoclaw.sh re-run (vendor init + lab policy + auth-shim pin + gate)"

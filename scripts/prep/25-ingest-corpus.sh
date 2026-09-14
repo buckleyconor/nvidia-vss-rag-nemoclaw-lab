@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # 25-ingest-corpus.sh — prep-time corpus ingest (03 layout; 02 interface
-# contract: POST :8082/v1/documents, multipart documents=@file +
-# data={"collection_name":"demo_corpus"}).
+# contract: :8082/v1/documents, multipart documents=@file +
+# data={"collection_name":"demo_corpus"}; rework 2026-09-14 #18/#12: PATCH +
+# blocking — v2.6.2 rejects POST re-uploads with "already exists" inside an
+# HTTP 200 body (main.py:637) and returns 200 + task_id before a
+# non-blocking upload runs (server.py:330); PATCH replaces existing docs).
+#
+# The ingestor raises "Collection ... does not exist" (HTTP 500, main.py:415)
+# for a missing collection — on a fresh VM every upload failed (probe (b)
+# 2026-09-14), so this script creates the collection if absent.
 #
 # Run on the learner vCD VM AFTER 20-start.sh (the RAG ingestor must be up)
 # and BEFORE the learner session — the index is ready before the session;
@@ -33,18 +40,34 @@ curl -sf --retry 60 --retry-delay 10 --retry-all-errors -m 30 \
     || fail "ingestor :8082/v1/health not 2xx within the retry budget (run 20-start.sh first)"
 echo "ingestor up"
 
+# create the collection if absent (idempotent; POST /v1/collection, 2026-09-14
+# probe: missing collection => HTTP 500 "does not exist" on every upload)
+if ! curl -sf -m 30 "$INGESTOR_URL/v1/collections" | grep -qF "\"$COLLECTION\""; then
+    curl -sf -m 60 -X POST "$INGESTOR_URL/v1/collection" -H 'Content-Type: application/json' \
+        -d "{\"collection_name\":\"$COLLECTION\"}" >/dev/null \
+        || fail "could not create collection $COLLECTION (POST /v1/collection)"
+    log "- created collection $COLLECTION"
+    echo "created collection '$COLLECTION'"
+fi
+
 echo "== ingesting into collection '$COLLECTION' =="
 COUNT=0
 FAILED=""
 while IFS= read -r file; do
     COUNT=$((COUNT + 1))
-    if curl -sf -m 600 \
-        -X POST "$INGESTOR_URL/v1/documents" \
+    # PATCH + blocking=true: the 2xx arrives only after ingestion is judged,
+    # and an existing document is replaced (re-runs are idempotent — probe
+    # (d) 2026-09-14: a POST re-upload is HTTP 200 with "already exists" in
+    # failed_documents, so a 2xx check alone cannot judge the upload).
+    if RESP=$(curl -sf -m 900 \
+        -X PATCH "$INGESTOR_URL/v1/documents" \
         -F "documents=@$file" \
-        -F "data={\"collection_name\":\"$COLLECTION\"}" >/dev/null; then
+        -F "data={\"collection_name\":\"$COLLECTION\",\"blocking\":true}") \
+        && python3 -c 'import json,sys; r=json.loads(sys.argv[1]); sys.exit(1 if r.get("failed_documents") or r.get("validation_errors") else 0)' "$RESP"; then
         echo "ok: $(basename "$file")"
     else
-        echo "25-ingest-corpus: WARNING — $file did not return 2xx (re-run this script after fixing the cause; re-ingest is a prep-time action)" >&2
+        if [ -n "${RESP:-}" ]; then printf '%s\n' "${RESP:0:500}" >&2; fi
+        echo "25-ingest-corpus: WARNING — $file did not ingest (re-run this script after fixing the cause; PATCH makes re-runs replace, not duplicate)" >&2
         FAILED="$FAILED $(basename "$file")"
     fi
 done <<< "$FILES"
@@ -52,7 +75,7 @@ done <<< "$FILES"
 log ""
 log "## $(date -u +%Y-%m-%dT%H:%M:%SZ) — 25-ingest-corpus: collection $COLLECTION"
 log "- documents ingested: $COUNT from $CORPUS_DIR (prep-time only — 01/05)"
-[ -n "$FAILED" ] || log "- all $COUNT documents returned 2xx"
+[ -n "$FAILED" ] || log "- all $COUNT documents ingested (PATCH, blocking=true, failed_documents empty)"
 if [ -n "$FAILED" ]; then
     log "  PREP FINDING: documents NOT ingested:$FAILED"
 fi

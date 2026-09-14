@@ -83,7 +83,7 @@ log "- VSS LVS .env (actual at $VSS_TAG): $LVS_ENV"
 [ -f "$NEMOCLAW_DIR/install.sh" ] \
     || fail "NemoClaw install.sh not found in $NEMOCLAW_DIR (init_nemoclaw.sh runs it from the checkout)"
 [ -d "$VSS_DIR/deploy/docker/developer-profiles/dev-profile-lvs/vss-agent/configs" ] \
-    || fail "VSS vss-agent configs dir not found (20-start.sh places config_rag.yml there)"
+    || fail "VSS vss-agent configs dir not found (vendor ships config_rag.yml with frag registered — 20-start.sh verifies it and points the agent at it)"
 log "- VSS: dev-profile.sh, init_nemoclaw.sh, vss-agent configs dir all present at $VSS_TAG"
 
 AGENT_VER=$(grep -m1 '^VSS_AGENT_VERSION=' "$VSS_DIR/$LVS_ENV" | cut -d= -f2- | tr -d "'\"" || true)

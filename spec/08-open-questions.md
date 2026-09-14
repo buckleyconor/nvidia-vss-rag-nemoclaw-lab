@@ -101,11 +101,16 @@ differs.
 
 ## C. Integration contract to verify against the cloned release
 
-10. **`config_rag.yml` exact content** — the spec's M4 contract test pins
-    what the file must provide at build time (exists, valid YAML, the
-    `frag` knowledge-retrieval tool enabled — see 08 item 38); the exact
-    shipped content, including the schema and the runtime reads of the
-    three `RAG_` values, is verified against the cloned release at prep.
+10. **`config_rag.yml` exact content** — RESOLVED 2026-09-14 (code-review
+    rework, #16/#17): at v3.2.1 the vendor ships the file (424 lines,
+    `frag_retrieval` registered, the three `RAG_` reads) and it is
+    authoritative — the repo stub (`config/config_rag.yml`) is deleted and
+    20-start.sh no longer overwrites the vendor file. Because
+    `dev-profile.sh:1181` forces `config.yml` (frag OFF) into `generated.env`,
+    20-start.sh exports the in-container `config_rag.yml` path (process env
+    beats `--env-file` in compose interpolation) and gates on the running
+    container's env; M4 test `test_20_start_exports_vendor_frag_config`
+    pins the export.
 11. **LVS `.env` actual path at the chosen tag** — the layout moved between
     releases (`deploy/docker/developer-profiles/…` vs
     `deployments/developer-workflow/…`); located at prep and recorded in

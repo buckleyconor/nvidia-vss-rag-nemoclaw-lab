@@ -124,7 +124,10 @@ nvidia-service-bp-vss-rag-nemoclaw/
 │   ├── nginx.conf.template            # VERBATIM from build doc Phase 1 (envsubst at start)
 │   └── mock-wo.yml                    # contract above
 ├── config/
-│   ├── config_rag.yml                 # VSS agent config enabling frag (Jul 2026 blog; verified at prep)
+│   ├── (config_rag.yml REMOVED 2026-09-14 rework — v3.2.1 ships the
+│   │    frag-enabling config and it is authoritative; 20-start.sh exports
+│   │    the in-container path, dev-profile.sh:1181 forces config.yml
+│   │    into generated.env, process env beats --env-file)
 │   ├── vlm.env                        # NIM_PASSTHROUGH_ARGS (0.40 / 32768 / 4)
 │   ├── lvs.env.example                # VSS LVS .env overlay — secrets as placeholders (see 04)
 │   ├── rag.env                        # RAG APP_* values (02 contract)
