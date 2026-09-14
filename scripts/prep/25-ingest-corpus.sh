@@ -52,9 +52,11 @@ fi
 
 echo "== ingesting into collection '$COLLECTION' =="
 COUNT=0
+OK=0
 FAILED=""
 while IFS= read -r file; do
     COUNT=$((COUNT + 1))
+    RESP=""   # never report the previous file's body for this file's failure
     # PATCH + blocking=true: the 2xx arrives only after ingestion is judged,
     # and an existing document is replaced (re-runs are idempotent — probe
     # (d) 2026-09-14: a POST re-upload is HTTP 200 with "already exists" in
@@ -64,6 +66,7 @@ while IFS= read -r file; do
         -F "documents=@$file" \
         -F "data={\"collection_name\":\"$COLLECTION\",\"blocking\":true}") \
         && python3 -c 'import json,sys; r=json.loads(sys.argv[1]); sys.exit(1 if r.get("failed_documents") or r.get("validation_errors") else 0)' "$RESP"; then
+        OK=$((OK + 1))
         echo "ok: $(basename "$file")"
     else
         if [ -n "${RESP:-}" ]; then printf '%s\n' "${RESP:0:500}" >&2; fi
@@ -74,7 +77,7 @@ done <<< "$FILES"
 
 log ""
 log "## $(date -u +%Y-%m-%dT%H:%M:%SZ) — 25-ingest-corpus: collection $COLLECTION"
-log "- documents ingested: $COUNT from $CORPUS_DIR (prep-time only — 01/05)"
+log "- documents ingested: $OK of $COUNT from $CORPUS_DIR (prep-time only — 01/05)"
 [ -n "$FAILED" ] || log "- all $COUNT documents ingested (PATCH, blocking=true, failed_documents empty)"
 if [ -n "$FAILED" ]; then
     log "  PREP FINDING: documents NOT ingested:$FAILED"

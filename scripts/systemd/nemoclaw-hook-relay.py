@@ -21,19 +21,22 @@ translates it into the CURRENT agent-turn surface —
 
 Contract
 --------
-- Binds 172.18.0.1:18790 (the demo-net bridge gateway IP, port 18790 — the
-  port the vendor's own sandbox policy already references alongside 18789
-  and which the vendor forward leaves unused). Only containers on demo-net
-  can reach it (mock-wo via host.docker.internal:host-gateway); it is NOT on
-  loopback, 0.0.0.0, or any NemoClaw-managed port. If demo-net does not
-  exist yet (boot ordering — the sandbox container joins demo-net after the
-  docker daemon starts), the relay waits in place, retrying the bind every
-  5 s, instead of crash-looping.
+- Binds <demo-net gateway IP>:18790 (port 18790 — the port the vendor's own
+  sandbox policy already references alongside 18789 and which the vendor
+  forward leaves unused). The gateway IP is resolved from `docker network
+  inspect demo-net` on every bind attempt — Docker assigns bridge subnets in
+  creation order, so a fixed 172.18.0.1 is not safe (HOOK_RELAY_BIND
+  overrides). mock-wo reaches it via OPENCLAW_HOOK_URL, which 20-start.sh
+  derives from the same network (NOT host.docker.internal: host-gateway is
+  docker0, where this socket does not listen). It is NOT on loopback,
+  0.0.0.0, or any NemoClaw-managed port. If demo-net does not exist yet
+  (boot ordering), the relay waits in place, retrying the bind every 5 s,
+  instead of crash-looping.
 - Auth: Authorization: Bearer <token>, token read from
-  /root/.config/lab/nemoclaw-hook-token (root 600, gitignored). The token is
-  the sandbox agent's gateway token (`nemoclaw demo gateway-token`); it
-  survives gateway restarts and container stop/start (state-pinned) but must
-  be re-written after a clean re-onboard (heal-ladder tier 3 nuclear).
+  /root/.config/lab/nemoclaw-hook-token (root 600). The token is
+  lab-generated (20-start.sh / 50-resilience.sh), NOT the sandbox gateway
+  token: the relay authenticates mock-wo only (the agent turn goes through
+  the CLI), so a clean re-onboard (heal-ladder tier 3) cannot invalidate it.
 - POST /hooks/wake with valid token + non-empty "text":
     202 Accepted immediately; the agent turn runs in the background, one at
     a time (a busy relay answers 409 — OpenClaw sessions are single-turn
@@ -56,7 +59,8 @@ import subprocess
 import threading
 import time
 
-HOST = os.environ.get("HOOK_RELAY_BIND", "172.18.0.1")
+BIND_OVERRIDE = os.environ.get("HOOK_RELAY_BIND", "")
+DEMO_NET = os.environ.get("HOOK_RELAY_NETWORK", "demo-net")
 PORT = int(os.environ.get("HOOK_RELAY_PORT", "18790"))
 TOKEN_FILE = os.environ.get("HOOK_RELAY_TOKEN_FILE",
                             "/root/.config/lab/nemoclaw-hook-token")
@@ -163,24 +167,41 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
+def demo_net_gateway() -> str:
+    """The demo-net bridge gateway IP, or "" while the network/daemon is not up."""
+    try:
+        r = subprocess.run(
+            ["docker", "network", "inspect", DEMO_NET,
+             "--format", "{{(index .IPAM.Config 0).Gateway}}"],
+            capture_output=True, text=True, timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
 def main() -> None:
-    # Boot-ordering tolerance: 172.18.0.1 (the demo-net bridge IP) only exists
-    # once the sandbox container has joined demo-net, which happens after the
-    # docker daemon starts the unless-stopped containers. A bind failure at
-    # boot is expected, not an error — retry in place instead of crash-looping
-    # (systemd Restart=always is the backstop, not the design).
+    # Boot-ordering tolerance: the demo-net bridge IP only exists once docker
+    # has brought the network up (and the daemon may not answer yet). A
+    # resolve or bind failure at boot is expected, not an error — retry in
+    # place instead of crash-looping (systemd Restart=always is the backstop,
+    # not the design).
     server = None
     attempt = 0
     while server is None:
+        host = BIND_OVERRIDE or demo_net_gateway()
         try:
-            server = http.server.ThreadingHTTPServer((HOST, PORT), Handler)
-            log(f"relay listening on {HOST}:{PORT} (token file {TOKEN_FILE})")
+            if not host:
+                raise OSError(f"network {DEMO_NET} not found (docker network inspect)")
+            server = http.server.ThreadingHTTPServer((host, PORT), Handler)
+            log(f"relay listening on {host}:{PORT} (token file {TOKEN_FILE})")
             break
         except OSError as exc:
             attempt += 1
             if attempt == 1 or attempt % 12 == 0:  # first try, then ~every minute
-                log(f"bind {HOST}:{PORT} not possible yet ({exc.__class__.__name__}: "
-                    f"{exc}); waiting for demo-net to come up (retry {attempt})")
+                log(f"bind {host or '<unresolved>'}:{PORT} not possible yet "
+                    f"({exc.__class__.__name__}: {exc}); waiting for {DEMO_NET} to come up "
+                    f"(retry {attempt})")
             time.sleep(5)
     server.serve_forever()
 

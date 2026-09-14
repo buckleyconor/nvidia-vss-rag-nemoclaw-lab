@@ -7,6 +7,9 @@ Type=oneshot
 # systemd does not set HOME for system services; the CLI resolves its
 # state dir and nvm bootstrap from HOME (root's — matches the install).
 Environment=HOME=/root
+# LAB_REPO (the repo checkout) for the heal ladder this watch may invoke —
+# written by 50-resilience.sh; if absent the ladder refuses with a CRIT log.
+EnvironmentFile=-/etc/lab/lab.env
 # The script always exits 0 by design (a failing probe is data, not a
 # unit failure); stdout/stderr go to the journal AND /var/log/lab-health.log.
 # 2026-09-11: the NemoClaw leg can invoke the heal ladder, whose nuclear

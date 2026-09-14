@@ -39,6 +39,14 @@ shim_models() {
         -H 'Authorization: Bearer dummy' | grep -qF "$MODEL_ID"
 }
 check "auth-shim :8080/v1/models lists $MODEL_ID" shim_models
+# streaming (02 step 1; 09 L5 item 1): tokens arrive incrementally, not as
+# one blob — the chunk timing is the evidence (scripts/prep/shim-stream-check.py)
+if STREAM_OUT=$(python3 "$REPO_ROOT/scripts/prep/shim-stream-check.py" "$MODEL_ID" 2>&1); then
+    echo "PASS  auth-shim streams incrementally ($STREAM_OUT)"
+else
+    echo "FAIL  auth-shim streaming: $STREAM_OUT (proxy_buffering must be off)" >&2
+    FAILURES=$((FAILURES + 1))
+fi
 
 check "VSS agent :8000/health" curl -sf -m 10 http://127.0.0.1:8000/health
 check "LVS backend :38111/v1/ready" curl -sf -m 10 http://127.0.0.1:38111/v1/ready
@@ -58,25 +66,26 @@ else
     echo "PASS  local LLM NIM :30081 absent (LLM is remote — as required)"
 fi
 
-# the six lab NIMs: containers running (their Triton health surfaces are
-# vendor-internal; the L5 checklist confirms the healthy markers in
-# docker ps on the VM)
+# the six lab NIMs: HEALTHY (02 step 4), judged on the healthcheck nims.yaml
+# defines per NIM — a running container that is still loading its model
+# serves nothing; a container without a healthcheck is judged on running.
 # resolve by SERVICE name via Compose — container names carry the project
 # prefix, which is derived from the compose file's directory, not ours to assume.
 for svc in nemotron-embedding-ms nemotron-ranking-ms \
            page-elements graphic-elements table-structure nemotron-ocr; do
-    cid=$(docker compose -f "$RAG_DIR/deploy/compose/nims.yaml" ps -q "$svc" 2>/dev/null | head -1 || true)
+    cid=$(docker compose -f "$RAG_DIR/deploy/compose/nims.yaml" ps -aq "$svc" 2>/dev/null | head -1 || true)
     if [ -z "$cid" ]; then
         state="missing"
     else
-        state=$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null) || state="missing"
+        state=$(docker inspect --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null) || state="missing"
     fi
-    if [ "$state" = "running" ]; then
-        echo "PASS  NIM $svc running"
-    else
-        echo "FAIL  NIM $svc is '$state', want running" >&2
-        FAILURES=$((FAILURES + 1))
-    fi
+    case "$state" in
+        running/healthy|running/none)
+            echo "PASS  NIM $svc $state" ;;
+        *)
+            echo "FAIL  NIM $svc is '$state', want running/healthy" >&2
+            FAILURES=$((FAILURES + 1)) ;;
+    esac
 done
 
 echo ""

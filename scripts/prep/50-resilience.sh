@@ -2,7 +2,8 @@
 # 50-resilience.sh — zero-interaction reboot recovery + self-heal layer (09).
 #
 # Installs/hardens, idempotently:
-#   1. Restart policies: long-running containers -> unless-stopped;
+#   1. Restart policies: RUNNING long-running containers -> unless-stopped
+#      (exited/created containers are left as-is and named in the output);
 #      named one-shots -> on-failure; vss-kibana-init -> no (the vendor
 #      left it on UNBOUNDED on-failure; at first bring-up the kibana
 #      container — which the bp_developer_lvs_2d profile DOES run — sat
@@ -20,6 +21,9 @@
 #   4. Health watch: lab-health-watch.timer (5 min) running
 #      health-watch.sh — HTTP-gate probes + tiered self-heal with
 #      cooldowns, grace windows and loud escalation (no silent hammering).
+#   5. NemoClaw keepalive (persistent gateway client — the 2026-09-13
+#      post-reboot flap) and the hook relay (O2 wake bridge) + its token;
+#      /etc/lab/lab.env carries LAB_REPO for every unit.
 #
 # Run on the learner VM after 20-start.sh / 40-nemoclaw.sh (also called by
 # 20-start.sh as its final step).
@@ -59,10 +63,20 @@ in_list() { local x; for x in $2; do [ "$x" = "$1" ] && return 0; done; return 1
 changed=0
 for c in $(docker ps -aq); do
     name=$(docker inspect --format '{{.Name}}' "$c" | sed 's|^/||')
+    state=$(docker inspect --format '{{.State.Status}}' "$c")
     want=""
     if in_list "$name" "$SUPPRESSED"; then want=no
     elif in_list "$name" "$ONE_SHOTS"; then want=on-failure:5
-    else want=unless-stopped; fi
+    elif [ "$state" = "running" ]; then want=unless-stopped
+    else
+        # Only a RUNNING container is a long-running service. unless-stopped
+        # restarts on every exit, so promoting an exited-0 one-shot missing
+        # from ONE_SHOTS makes it loop after the next reboot (the kibana-init
+        # failure), and health-watch `docker start`s created+unless-stopped
+        # containers — a never-started (e.g. GPU) container would be started.
+        echo "policy $name: left as-is (state=$state — not a running service; classify it in ONE_SHOTS if it is a one-shot)"
+        continue
+    fi
     have=$(docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' "$c")
     if [ "$have" != "$want" ]; then
         docker update --restart "$want" "$c" >/dev/null
@@ -104,16 +118,44 @@ PY
 # --- 3+4. units ----------------------------------------------------------------
 [ -f "$REPO_ROOT/scripts/prep/health-watch.sh" ] || fail "health-watch.sh missing (repo layout moved?)"
 install -d "$INSTALL_DIR"
+# The repo checkout every unit needs (heal tier 2 runs 40-nemoclaw.sh; the
+# ladder and keepalive source config/nemoclaw.env from it). Loaded by the
+# units via EnvironmentFile and by manual runs of the scripts.
+install -d /etc/lab
+printf 'LAB_REPO="%s"\n' "$REPO_ROOT" > /etc/lab/lab.env
+echo "/etc/lab/lab.env: LAB_REPO=$REPO_ROOT"
 install -m 755 "$REPO_ROOT/scripts/prep/health-watch.sh" "$INSTALL_DIR/health-watch.sh"
 install -m 755 "$REPO_ROOT/scripts/systemd/nemoclaw-recover.sh" "$INSTALL_DIR/nemoclaw-recover.sh"
 install -m 755 "$REPO_ROOT/scripts/systemd/nemoclaw-heal.sh" "$INSTALL_DIR/nemoclaw-heal.sh"
+install -m 755 "$REPO_ROOT/scripts/systemd/nemoclaw-keepalive.sh" "$INSTALL_DIR/nemoclaw-keepalive.sh"
+install -m 755 "$REPO_ROOT/scripts/systemd/nemoclaw-hook-relay.py" "$INSTALL_DIR/nemoclaw-hook-relay.py"
 install -m 644 "$REPO_ROOT/scripts/systemd/lab-health-watch.service" /etc/systemd/system/lab-health-watch.service
 install -m 644 "$REPO_ROOT/scripts/systemd/lab-health-watch.timer" /etc/systemd/system/lab-health-watch.timer
 install -m 644 "$REPO_ROOT/scripts/systemd/nemoclaw-recover.service" /etc/systemd/system/nemoclaw-recover.service
+install -m 644 "$REPO_ROOT/scripts/systemd/lab-nemoclaw-keepalive.service" /etc/systemd/system/lab-nemoclaw-keepalive.service
+install -m 644 "$REPO_ROOT/scripts/systemd/lab-nemoclaw-hook-relay.service" /etc/systemd/system/lab-nemoclaw-hook-relay.service
+# The relay's bearer token: lab-generated (not the sandbox gateway token), so
+# a tier-3 clean re-onboard cannot invalidate it. 20-start.sh creates it
+# first (mock-wo starts in STEP 1) — this only fills the gap on a
+# standalone 50-resilience run.
+HOOK_TOKEN_FILE="${LAB_HOOK_TOKEN_FILE:-/root/.config/lab/nemoclaw-hook-token}"
+install -d -m 700 "$(dirname "$HOOK_TOKEN_FILE")"
+if [ ! -s "$HOOK_TOKEN_FILE" ]; then
+    ( umask 077; python3 -c 'import secrets; print(secrets.token_hex(32))' > "$HOOK_TOKEN_FILE" )
+    echo "hook relay token generated at $HOOK_TOKEN_FILE (value never printed — 04)"
+fi
 systemctl daemon-reload
 systemctl enable lab-health-watch.timer nemoclaw-recover.service >/dev/null
 systemctl restart lab-health-watch.timer >/dev/null   # pick up the new timer spec
-echo "units enabled: nemoclaw-recover.service (boot), lab-health-watch.timer (5 min)"
+# keepalive: --now starts it if it is not running but never restarts a running
+# one — a restart drops the persistent gateway client, and the gateway stops
+# the sandbox 0-4 s after its last client leaves (the 2026-09-13 flap). A
+# changed keepalive script takes effect at the next reboot.
+systemctl enable --now lab-nemoclaw-keepalive.service >/dev/null
+# relay: stateless, restart is safe and picks up a changed script.
+systemctl enable lab-nemoclaw-hook-relay.service >/dev/null
+systemctl restart lab-nemoclaw-hook-relay.service
+echo "units enabled: nemoclaw-recover.service (boot), lab-health-watch.timer (5 min), lab-nemoclaw-keepalive.service, lab-nemoclaw-hook-relay.service"
 
 # --- 5. service enablement (reboot: driver + docker) ---------------------------
 for s in docker nvidia-persistenced; do
@@ -124,6 +166,8 @@ done
 # --- 6. verify -----------------------------------------------------------------
 systemctl is-active lab-health-watch.timer >/dev/null && echo "timer active"
 systemctl is-enabled nemoclaw-recover.service >/dev/null && echo "boot repair enabled"
+systemctl is-active lab-nemoclaw-keepalive.service >/dev/null && echo "keepalive active"
+systemctl is-active lab-nemoclaw-hook-relay.service >/dev/null && echo "hook relay active"
 echo "== first health-watch run (manual) =="
 "$INSTALL_DIR/health-watch.sh" || true
 

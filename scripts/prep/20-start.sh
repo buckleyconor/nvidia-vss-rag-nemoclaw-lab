@@ -130,6 +130,25 @@ if [ -f "$REPO_ROOT/config/mock-wo.env" ]; then
     . "$REPO_ROOT/config/mock-wo.env"
     set +a
 fi
+# The wake hook (O2) is lab-derived, never taken from mock-wo.env, so it is
+# exported AFTER the source above:
+#  - URL: the hook relay binds the demo-net bridge gateway (created by the
+#    shim compose just above). host.docker.internal would resolve to docker0,
+#    where the relay does not listen; the subnet is Docker-assigned, so it is
+#    read from the network rather than hardcoded.
+#  - token: lab-generated once (the relay reads the same file). Not the
+#    sandbox gateway token, so a tier-3 clean re-onboard cannot invalidate it.
+DEMO_NET_GW=$(docker network inspect demo-net --format '{{(index .IPAM.Config 0).Gateway}}' 2>/dev/null || true)
+[ -n "$DEMO_NET_GW" ] || fail "could not read the demo-net gateway IP (docker network inspect demo-net) — the shim compose creates it"
+HOOK_TOKEN_FILE="${LAB_HOOK_TOKEN_FILE:-/root/.config/lab/nemoclaw-hook-token}"
+install -d -m 700 "$(dirname "$HOOK_TOKEN_FILE")"
+if [ ! -s "$HOOK_TOKEN_FILE" ]; then
+    ( umask 077; python3 -c 'import secrets; print(secrets.token_hex(32))' > "$HOOK_TOKEN_FILE" )
+fi
+OPENCLAW_HOOK_URL="http://${DEMO_NET_GW}:18790"
+OPENCLAW_HOOK_TOKEN="$(cat "$HOOK_TOKEN_FILE")"
+export OPENCLAW_HOOK_URL OPENCLAW_HOOK_TOKEN
+echo "wake hook: relay at $OPENCLAW_HOOK_URL (token from $HOOK_TOKEN_FILE — value never printed)"
 docker compose -f compose/mock-wo.yml up -d >/dev/null
 # The shared endpoint has shown transient slow/hung windows on the dev VM
 # (2026-09-07, prep-log finding): a 120 s budget failed twice while the
@@ -146,9 +165,24 @@ for _ in $(seq 1 90); do
 done
 [ -n "$SHIM_OK" ] \
     || fail "shim gate failed: GET :8080/v1/models does not list $MODEL_ID (stop — every later phase depends on it, build doc Phase 1)"
+# streaming gate (02 step 1; 09 L5 item 1): tokens must arrive incrementally
+# through the shim (proxy_buffering off), not as one blob. Three attempts —
+# the same transient endpoint slowness the model gate above tolerates.
+STREAM_OK=""
+for _ in 1 2 3; do
+    if STREAM_OUT=$(python3 "$REPO_ROOT/scripts/prep/shim-stream-check.py" "$MODEL_ID" 2>&1); then
+        STREAM_OK=1
+        break
+    fi
+    echo "shim streaming check: $STREAM_OUT — retrying in 10 s"
+    sleep 10
+done
+[ -n "$STREAM_OK" ] \
+    || fail "shim streaming gate failed: $STREAM_OUT (the shim must stream SSE incrementally — proxy_buffering off, build doc Phase 1)"
+echo "gate ok: shim streaming ($STREAM_OUT)"
 wait_http 30 5 10 "http://127.0.0.1:8090/health"
 wait_http 30 5 10 "http://127.0.0.1:8091/health"
-log "- 20-start step 1: auth-shim up (model $MODEL_ID listed via :8080), mock-wo up (agent :8090/health ok, operator dashboard :8091/health ok)"
+log "- 20-start step 1: auth-shim up (model $MODEL_ID listed via :8080; streaming: $STREAM_OUT), mock-wo up (agent :8090/health ok, operator dashboard :8091/health ok; wake hook $OPENCLAW_HOOK_URL)"
 
 # ---- STEP 2/5: VSS (VLM claims 40% of the EMPTY GPU) -----------------------
 echo ""
@@ -325,19 +359,45 @@ docker compose -f deploy/compose/docker-compose-rag-server.yaml -f "$REPO_ROOT/c
 cd "$REPO_ROOT"
 wait_http 60 10 30 "http://127.0.0.1:8081/v1/health"
 wait_http 60 10 30 "http://127.0.0.1:8082/v1/health"
-# resolve each NIM by SERVICE name via Compose — container names carry the
+# Six NIMs HEALTHY (02 step 4), not merely running: a NIM still downloading
+# or loading its model is 'running' but serves nothing, and the first real
+# failure would otherwise surface in 25-ingest. nims.yaml defines a
+# healthcheck per NIM; a container without one is judged on running.
+# One shared deadline for all six — the first run downloads weights inside
+# the containers (45-70 min, build doc Phase 2).
+# Resolve each NIM by SERVICE name via Compose — container names carry the
 # project prefix, which is derived from the compose file's directory and is
 # not ours to assume.
-for svc in nemotron-embedding-ms nemotron-ranking-ms \
-           page-elements graphic-elements table-structure nemotron-ocr; do
-    cid=$(docker compose -f "$RAG_DIR/deploy/compose/nims.yaml" ps -q "$svc" 2>/dev/null | head -1 || true)
-    [ -n "$cid" ] \
-        || fail "RAG gate failed: NIM service $svc has no container (six NIMs healthy — 02 step 4)"
-    state=$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null) || state="missing"
-    [ "$state" = "running" ] \
-        || fail "RAG gate failed: NIM service $svc is '$state', want running (six NIMs healthy — 02 step 4)"
+NIM_SERVICES="nemotron-embedding-ms nemotron-ranking-ms page-elements graphic-elements table-structure nemotron-ocr"
+NIM_READY_TIMEOUT="${NIM_READY_TIMEOUT:-5400}"
+nim_state() {
+    local cid
+    cid=$(docker compose -f "$RAG_DIR/deploy/compose/nims.yaml" ps -aq "$1" 2>/dev/null | head -1 || true)
+    [ -n "$cid" ] || { echo "missing"; return; }
+    docker inspect --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null \
+        || echo "missing"
+}
+nim_deadline=$(( $(date +%s) + NIM_READY_TIMEOUT ))
+while :; do
+    pending=""
+    for svc in $NIM_SERVICES; do
+        st=$(nim_state "$svc")
+        case "$st" in
+            running/healthy|running/none) ;;
+            missing|exited/*|dead/*)
+                fail "RAG gate failed: NIM service $svc is '$st' (six NIMs healthy — 02 step 4; docker logs for the cause — an OOM exit means the VLM budget pin did not hold)" ;;
+            *) pending="$pending $svc($st)" ;;
+        esac
+    done
+    [ -n "$pending" ] || break
+    [ "$(date +%s)" -lt "$nim_deadline" ] \
+        || fail "RAG gate failed: NIMs not healthy after ${NIM_READY_TIMEOUT}s:$pending (six NIMs healthy — 02 step 4)"
+    echo "waiting for NIMs:$pending"
+    sleep 15
 done
-log "- 20-start step 4: RAG up (:8081/v1/health, :8082/v1/health; six NIM containers running: nemotron-embedding-ms, nemotron-ranking-ms, page-elements, graphic-elements, table-structure, nemotron-ocr; embedding endpoint = nemotron-embedding-ms per config/rag.env)"
+echo "gate ok: six NIMs healthy"
+wait_http 60 10 30 "http://127.0.0.1:8081/v1/health?check_dependencies=true"
+log "- 20-start step 4: RAG up (:8081/v1/health?check_dependencies=true, :8082/v1/health; six NIMs healthy: $NIM_SERVICES; embedding endpoint = nemotron-embedding-ms per config/rag.env)"
 
 # ---- STEP 5/5: NemoClaw sandbox ---------------------------------------------
 echo ""

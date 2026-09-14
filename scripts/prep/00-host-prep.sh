@@ -75,8 +75,13 @@ log "- nvidia driver: $DRIVER_GOT (exact pin, 10 c4)"
 # ---- 2. Docker Engine window (10 constraint 8) ----------------------------
 echo "== 2/8 Docker Engine [${DOCKER_MIN}, ${DOCKER_MAX}) + Compose >= ${COMPOSE_MIN} =="
 if ! command -v docker >/dev/null 2>&1; then
-    echo "docker absent — installing via get.docker.com (then re-checking the window)"
-    curl -fsSL https://get.docker.com | "${SUDO[@]}" sh
+    # Pin the install INSIDE the window: bare get.docker.com installs the
+    # latest engine, which can be >= DOCKER_MAX (breaks NGC pulls, 10 c8) —
+    # the window check below would then fail only after the forbidden
+    # version is already on the host.
+    DOCKER_INSTALL_VERSION="${DOCKER_INSTALL_VERSION:-$DOCKER_MIN}"
+    echo "docker absent — installing $DOCKER_INSTALL_VERSION via get.docker.com (then re-checking the window)"
+    curl -fsSL https://get.docker.com | "${SUDO[@]}" sh -s -- --version "$DOCKER_INSTALL_VERSION"
 fi
 # `|| true` keeps the failing substitution from aborting under set -e
 # before the guard below can report it (2>/dev/null would otherwise
@@ -113,6 +118,17 @@ CTK_VER=$(nvidia-ctk --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' |
 [ -n "$CTK_VER" ] || fail "cannot parse nvidia-ctk version"
 ver_at_least "$CTK_VER" "$CTK_MIN" \
     || fail "NVIDIA Container Toolkit $CTK_VER < floor $CTK_MIN (09)"
+# daemon.json content BEFORE steps 3-4 touch it (parsed + key-sorted, so a
+# formatting-only rewrite by nvidia-ctk or the merge below does not count as
+# a change) — step 4 restarts docker only on a real change.
+daemon_json_canon() {
+    python3 -c 'import json,sys
+try:
+    print(json.dumps(json.load(open("/etc/docker/daemon.json")), sort_keys=True))
+except FileNotFoundError:
+    print("")' 2>/dev/null || echo "<unreadable>"
+}
+DAEMON_JSON_BEFORE="$(daemon_json_canon)"
 "${SUDO[@]}" nvidia-ctk runtime configure --runtime=docker
 echo "toolkit: $CTK_VER"
 log "- nvidia container toolkit: $CTK_VER (docker runtime configured)"
@@ -143,7 +159,21 @@ if changed:
 else:
     print("daemon.json already carries cgroupfs + 32g shm")
 PY
-"${SUDO[@]}" systemctl restart docker
+# Restart docker only when it would change something: the config changed, or
+# the running daemon does not reflect it yet (cgroup driver / nvidia runtime).
+# An unconditional restart on a "safe" re-run restarts every container at
+# once — before 50-resilience sets live-restore that re-profiles the VLM and
+# the six NIMs together, the start-order failure 02 forbids.
+RUNNING_CGROUP=$(docker info --format '{{.CgroupDriver}}' 2>/dev/null || true)
+RUNNING_RUNTIMES=$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)
+if [ "$(daemon_json_canon)" != "$DAEMON_JSON_BEFORE" ] \
+    || [ "$RUNNING_CGROUP" != "cgroupfs" ] \
+    || ! printf '%s' "$RUNNING_RUNTIMES" | grep -q '"nvidia"'; then
+    echo "restarting docker (daemon.json changed or not yet in effect)"
+    "${SUDO[@]}" systemctl restart docker
+else
+    echo "docker daemon already runs this daemon.json — no restart"
+fi
 CGROUP_DRIVER=$(docker info --format '{{.CgroupDriver}}' 2>/dev/null || true)
 [ "$CGROUP_DRIVER" = "cgroupfs" ] \
     || fail "daemon cgroup driver is $CGROUP_DRIVER, want cgroupfs (VSS prerequisite — 10 c6)"

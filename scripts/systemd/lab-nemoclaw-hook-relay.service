@@ -2,16 +2,20 @@
 # (operator-dashboard-spec O2, 2026-09-13: the nemoclaw-lab-cl /hooks/wake
 # endpoint does not exist in OpenClaw 2026.7.1 — the relay translates the
 # wake POST into `nemoclaw demo agent`, the current agent-turn surface).
+#
+# Bind address: the demo-net bridge gateway, resolved by the relay itself
+# from `docker network inspect demo-net` (Docker assigns bridge subnets in
+# creation order, so no fixed IP is safe). Set HOOK_RELAY_BIND only to
+# override that.
 [Unit]
-Description=NemoClaw hook relay — accept wake POSTs on 172.18.0.1:18790, run agent turns
-After=network-online.target
+Description=NemoClaw hook relay — accept wake POSTs on the demo-net gateway :18790, run agent turns
+After=network-online.target docker.service
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
 Environment=HOME=/root
-Environment=HOOK_RELAY_BIND=172.18.0.1
 Environment=HOOK_RELAY_PORT=18790
 ExecStart=/usr/bin/python3 /usr/local/lib/lab/nemoclaw-hook-relay.py
 Restart=always

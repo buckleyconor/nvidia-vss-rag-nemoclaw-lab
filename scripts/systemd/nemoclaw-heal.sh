@@ -24,9 +24,8 @@
 #               re-establishes the full lab contract; tiers 0/1 are partial
 #               repairs that stop short of init and are left to the 5-min
 #               health-watch cadence, which runs the default (tier 0) ladder.
-#               (2026-09-14 review: on a VM where the repo is not at the
-#               default REPO path, tier 2 cannot find 40-nemoclaw.sh — set
-#               LAB_REPO in the unit.)
+#               LAB_REPO (the repo checkout) comes from /etc/lab/lab.env,
+#               written by 50-resilience.sh and loaded by every unit.
 #   tier 3      NUCLEAR — clean re-onboard: openshell sandbox delete ->
 #               nemoclaw demo destroy (reconcile) -> gateway remove ->
 #               process kill -> stale state sweep (PRESERVED, never deleted:
@@ -43,10 +42,18 @@
 #   sudo /usr/local/lib/lab/nemoclaw-heal.sh
 #
 # Exit code contract: 0 = gate healthy (whether or not action was needed);
-# 1 = still unhealthy (logged; the caller's safety net applies).
+# 1 = still unhealthy, or refused (logged; the caller's safety net applies);
+# 3 = another heal holds the lock — nothing was done (callers must not
+# count it as a success or an action).
 set -uo pipefail   # no -e: a failing tier must not kill the ladder
 
-REPO="${LAB_REPO:-/home/demouser/projects/nvidia-vss-rag-nemoclaw-lab}"
+# The repo checkout: the units load /etc/lab/lab.env (50-resilience.sh); a
+# manual `sudo nemoclaw-heal.sh` reads the same file.
+if [ -z "${LAB_REPO:-}" ] && [ -r /etc/lab/lab.env ]; then
+    # shellcheck disable=SC1091
+    . /etc/lab/lab.env
+fi
+REPO="${LAB_REPO:-}"
 CLI="${HOME:-/root}/.local/bin/nemoclaw"
 OPENSHELL="${OPENSHELL:-/usr/local/bin/openshell}"
 GW_PORT="${NEMOCLAW_GATEWAY_PORT:-8085}"
@@ -65,10 +72,17 @@ say() { printf '%s %s\n' "$(ts)" "$*" | tee -a "$LOG"; }
 # --- one heal at a time (boot service and health-watch can overlap) --------
 mkdir -p "$STATE_DIR"
 exec 9>"$LOCK"
-flock -n 9 || { echo "nemoclaw-heal: another heal is in progress — no-op" >>"$LOG"; exit 0; }
+flock -n 9 || { echo "$(ts) nemoclaw-heal: another heal is in progress — no-op (exit 3)" >>"$LOG"; exit 3; }
 
 # --- environment contract (same as 40-nemoclaw.sh: the repo's env file) ----
-if [ -f "$REPO/config/nemoclaw.env" ]; then
+# Without it, tier 2 cannot run 40-nemoclaw.sh and tier 3 would re-onboard
+# with no custom provider/endpoint — destroying the lab sandbox. Checked
+# before the ladder is entered (below), after the healthy-gate fast path.
+REPO_OK=0
+if [ -n "$REPO" ] && [ -f "$REPO/config/nemoclaw.env" ] && [ -f "$REPO/scripts/prep/40-nemoclaw.sh" ]; then
+    REPO_OK=1
+fi
+if [ "$REPO_OK" = 1 ]; then
     set -a
     # shellcheck disable=SC1090
     . "$REPO/config/nemoclaw.env"
@@ -149,6 +163,10 @@ esac
 
 say "nemoclaw-heal: started (pid $$, start tier $START_TIER)"
 gate && { say "nemoclaw-heal: already healthy — no action"; exit 0; }
+if [ "$REPO_OK" != 1 ]; then
+    say "CRIT nemoclaw-heal: gate FAILED but the lab repo is not usable (LAB_REPO='${REPO}': needs config/nemoclaw.env + scripts/prep/40-nemoclaw.sh; /etc/lab/lab.env is written by 50-resilience.sh) — refusing the ladder: tier 3 without the env contract re-onboards the wrong provider"
+    exit 1
+fi
 say "nemoclaw-heal: gate FAILED — entering the ladder at tier $START_TIER"
 
 # --- tier 0: the vendor's own boot repair ------------------------------------

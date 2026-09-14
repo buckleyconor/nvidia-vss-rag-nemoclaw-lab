@@ -5,6 +5,11 @@
 # real env files — templates exempted below
 *.env
 !*.env.example
+# repo-carried contract files with no secrets (03 layout; 04 secrets table):
+# 20-start.sh / 40-nemoclaw.sh / the heal ladder need them on a fresh clone
+!config/rag.env
+!config/vlm.env
+!config/nemoclaw.env
 
 # prep-time artifact: recorded reality (clone SHAs, digests, measurements)
 prep-log.md

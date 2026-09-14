@@ -7,7 +7,8 @@
 #   1. A FRESH OpenClaw is required for a first install (build doc 9.1):
 #      a foreign `demo` sandbox (no lab model) STOPS the script — remove
 #      it first (instructor action). Re-running against THIS lab's own
-#      sandbox is a supported repair path: onboarding is skipped and the
+#      sandbox is a supported repair path: init_nemoclaw.sh re-runs (it is
+#      required for a clean start — the boot heal relies on it) and the
 #      policy is re-applied idempotently (2026-09-10 dry-run).
 #   2. Network-policy extension: the VSS preset grants VSS on :8000 only.
 #      The lab policy file (generated here into state/, gitignored) is the
@@ -398,6 +399,23 @@ else
     echo "lab-auth-shim policy applied (the supervisor's direct dial of auth-shim:8080 is pre-approved)"
     log "- lab-auth-shim policy applied (auth-shim:8080 pre-approved for the supervisor's direct route-backend dial — 2026-09-11 fix)"
 fi
+
+# --- forbidden ports in the LIVE policy (ADR-V06/V08) -----------------------
+# The generated-file check above cannot see grants already in the sandbox:
+# policy-add is additive, so a sandbox onboarded before the 2026-09-13 strip
+# (or re-onboarded from the unstripped vendor preset) keeps
+# host.openshell.internal:8081 while the file check reports clean. Judge the
+# policy the sandbox actually enforces.
+nemoclaw_cli "$SANDBOX" policy get --raw > "$LIVE_NOW" 2>/dev/null \
+    || fail "could not re-read the live sandbox policy for the forbidden-port check"
+for port in "${FORBIDDEN_ENDPOINTS[@]}"; do
+    if grep -Eq "^[[:space:]]+port:[[:space:]]*['\"]?${port}['\"]?([^0-9]|$)" "$LIVE_NOW"; then
+        echo "live policy entries granting port $port:" >&2
+        grep -En -B2 "^[[:space:]]+port:[[:space:]]*['\"]?${port}['\"]?([^0-9]|$)" "$LIVE_NOW" >&2 || true
+        fail "the LIVE sandbox policy grants port $port (left from an earlier install — policy-add is additive; see state/nemoclaw-live-policy-check.yaml). Remove that entry from the sandbox policy or re-onboard the sandbox, then re-run (operator-dashboard-spec ADR-V06/ADR-V08)"
+    fi
+done
+echo "live policy check: no grant for ${FORBIDDEN_ENDPOINTS[*]}"
 
 # the installer (and nvm node 22 when it bootstrapped one) put the CLIs on
 # a PATH this login shell may not have — the installer's own hint is to

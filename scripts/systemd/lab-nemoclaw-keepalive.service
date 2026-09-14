@@ -11,6 +11,8 @@ Wants=network-online.target
 Type=simple
 User=root
 Environment=HOME=/root
+# LAB_REPO (the repo checkout), written by 50-resilience.sh
+EnvironmentFile=-/etc/lab/lab.env
 ExecStart=/usr/local/lib/lab/nemoclaw-keepalive.sh
 Restart=always
 RestartSec=10

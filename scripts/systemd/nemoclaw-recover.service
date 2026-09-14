@@ -17,9 +17,12 @@ Environment=HOME=/root
 # Boot pass starts the ladder at tier 2: init_nemoclaw.sh (via 40-nemoclaw.sh)
 # is the only boot path that re-establishes the full lab contract; tiers 0/1
 # are partial repairs left to the 5-min health-watch leg (default tier 0).
-# 2026-09-14 review: on a VM with the repo elsewhere, add Environment=LAB_REPO
-# or tier 2 cannot find 40-nemoclaw.sh.
 Environment=NEMOCLAW_HEAL_START_TIER=2
+# LAB_REPO (the repo checkout — tier 2 runs its 40-nemoclaw.sh), written by
+# 50-resilience.sh; if absent the ladder refuses with a CRIT log.
+EnvironmentFile=-/etc/lab/lab.env
+# exit 3 = another heal (keepalive / health-watch) already holds the lock
+SuccessExitStatus=3
 # Settle time: the container swarm (42 units) needs a minute after the
 # daemon before the sandbox gateway answers probes. The 5-min health-watch
 # timer covers whatever this pass does not.

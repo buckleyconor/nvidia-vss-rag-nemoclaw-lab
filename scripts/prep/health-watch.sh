@@ -217,6 +217,10 @@ nemoclaw_leg() {
         if [ $hrc -eq 0 ]; then
             acted nemoclaw
             say "OK nemoclaw-heal succeeded (gate healthy)"
+        elif [ $hrc -eq 3 ]; then
+            # another heal (typically the boot pass at tier 2) holds the lock:
+            # nothing was done — not a success, not an action for escalation
+            say "SKIP nemoclaw-heal — another heal holds the lock (boot pass?); not counted"
         else
             say "WARN nemoclaw-heal finished unhealthy (exit $hrc) — its loop guard applies; next attempt after cooldown"
         fi
